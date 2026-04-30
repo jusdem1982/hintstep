@@ -1,0 +1,3045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#0F6E56">
+<meta name="description" content="HintStep helps parents coach their children through homework with guiding questions, not answers.">
+<title>HintStep — Homework coaching for parents</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+:root {
+  --pri:#0F6E56;--pri-light:#E1F5EE;--pri-mid:#5DCAA5;--pri-dark:#04342C;
+  --acc:#EF9F27;--acc-light:#FAEEDA;--acc-dark:#633806;
+  --bg:#F7F6F3;--surface:#FFFFFF;--text:#1A1A1A;--text2:#6B6B6B;--text3:#9B9B9B;
+  --border:#E5E5E3;--danger:#E24B4A;
+  --blue:#378ADD;--blue-light:#E6F1FB;--blue-dark:#185FA5;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100dvh;display:flex;flex-direction:column;max-width:480px;margin:0 auto;-webkit-font-smoothing:antialiased}
+.screen{display:none;flex-direction:column;flex:1;min-height:100dvh}
+.screen.active{display:flex}
+.screen-body{flex:1;padding:16px;overflow-y:auto;padding-bottom:80px}
+.header{padding:12px 16px;display:flex;align-items:center;gap:10px;background:var(--surface);border-bottom:.5px solid var(--border);position:sticky;top:0;z-index:10}
+.header-title{font-size:18px;font-weight:600;flex:1}
+.back-btn{width:36px;height:36px;border-radius:50%;border:none;background:var(--bg);cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;color:var(--text2)}
+.back-btn:hover{background:var(--border)}
+.header-action{font-size:14px;color:var(--pri);font-weight:500;cursor:pointer;background:none;border:none}
+.nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;display:flex;background:var(--surface);border-top:.5px solid var(--border);padding:8px 0 max(12px,env(safe-area-inset-bottom));z-index:20}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:var(--text3);cursor:pointer;background:none;border:none;padding:4px 0}
+.nav-item.active{color:var(--pri)}
+.nav-item svg{width:22px;height:22px}
+.btn{width:100%;padding:15px;border-radius:12px;border:none;font-size:16px;font-weight:600;cursor:pointer;transition:transform .1s,opacity .15s}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-primary{background:var(--pri);color:#fff}
+.btn-primary:hover:not(:disabled){opacity:.9}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn-danger{background:var(--danger);color:#fff}
+.badge{display:inline-block;padding:4px 12px;border-radius:8px;font-size:12px;font-weight:600}
+.card{background:var(--surface);border:.5px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px}
+.camera-zone{border:2px dashed var(--border);border-radius:16px;padding:48px 24px;text-align:center;cursor:pointer;transition:all .2s}
+.camera-zone:hover{border-color:var(--pri);background:rgba(225,245,238,.3)}
+.step-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:10px;cursor:pointer;transition:border-color .15s}
+.step-card.expanded{border-color:var(--pri);border-width:1.5px}
+.step-num{width:28px;height:28px;border-radius:50%;background:var(--pri-light);color:var(--pri);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
+.question-box{background:var(--pri-light);border-radius:10px;padding:14px 16px;margin-bottom:10px}
+.question-box p{font-size:14px;color:var(--pri-dark);line-height:1.6;margin-bottom:8px;padding-left:8px;border-left:2px solid var(--pri-mid)}
+.question-box p:last-child{margin-bottom:0}
+.tip-box{background:var(--acc-light);border-radius:10px;padding:14px 16px;font-size:14px;color:var(--acc-dark);line-height:1.5}
+.stuck-box{background:var(--blue-light);border-radius:10px;padding:14px 16px;font-size:14px;color:var(--blue-dark);line-height:1.5;margin-top:10px}
+.upload-area{position:relative;overflow:hidden;background:var(--bg);border-radius:14px;min-height:260px;display:flex;align-items:center;justify-content:center}
+.upload-area img{width:100%;height:100%;object-fit:cover;border-radius:14px;max-height:400px}
+#file-input{display:none}
+.fade-in{animation:fadeIn .3s ease-out}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1}}
+.scan-container{position:relative;width:220px;height:280px;background:var(--bg);border-radius:14px;overflow:hidden;margin:0 auto}
+.scan-line{position:absolute;left:8%;width:84%;height:3px;background:linear-gradient(90deg,transparent,var(--pri),transparent);border-radius:2px;animation:scanMove 2s ease-in-out infinite}
+@keyframes scanMove{0%,100%{top:12%}50%{top:78%}}
+.pulse-dots{display:flex;gap:8px;justify-content:center;margin:20px 0}
+.pulse-dots span{width:10px;height:10px;border-radius:50%;background:var(--pri);animation:dotPulse 1.2s ease-in-out infinite}
+.pulse-dots span:nth-child(2){animation-delay:.2s}
+.pulse-dots span:nth-child(3){animation-delay:.4s}
+@keyframes dotPulse{0%,100%{opacity:.25;transform:scale(.7)}50%{opacity:1;transform:scale(1)}}
+.splash-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 32px;flex:1}
+.splash-logo{width:88px;height:88px;border-radius:24px;background:var(--pri-light);display:flex;align-items:center;justify-content:center;margin-bottom:24px}
+.cheat-label{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px}
+.example-box{background:var(--bg);border-radius:12px;padding:16px;line-height:1.7}
+.mini-num{width:22px;height:22px;border-radius:50%;background:var(--pri-light);color:var(--pri);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px}
+.error-box{background:#FCEBEB;border-radius:12px;padding:16px;color:#791F1F;font-size:14px;line-height:1.5;margin-bottom:12px}
+.recent-item{display:flex;align-items:center;gap:12px;padding:14px;border-radius:12px;cursor:pointer}
+.recent-item:hover{background:var(--bg)}
+.recent-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0}
+/* --- Form inputs --- */
+.form-group{margin-bottom:16px}
+.form-label{display:block;font-size:14px;font-weight:600;color:var(--text2);margin-bottom:6px}
+.form-input{width:100%;padding:14px 16px;border-radius:12px;border:1px solid var(--border);font-size:16px;font-family:inherit;background:var(--surface);color:var(--text);outline:none;transition:border-color .2s}
+.form-input:focus{border-color:var(--pri)}
+.form-input::placeholder{color:var(--text3)}
+.form-select{width:100%;padding:14px 16px;border-radius:12px;border:1px solid var(--border);font-size:16px;font-family:inherit;background:var(--surface);color:var(--text);outline:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%236B6B6B' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 16px center}
+.form-error{color:var(--danger);font-size:13px;margin-top:6px;display:none}
+.form-link{color:var(--pri);font-size:14px;cursor:pointer;background:none;border:none;font-family:inherit;text-decoration:underline}
+.child-card{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:16px;margin-bottom:10px;cursor:pointer;display:flex;align-items:center;gap:14px;transition:border-color .15s}
+.child-card:hover{border-color:var(--pri-mid)}
+.child-card.selected{border-color:var(--pri);background:var(--pri-light)}
+.child-avatar{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;flex-shrink:0}
+.progress-track{height:6px;background:var(--bg);border-radius:3px;overflow:hidden;margin-top:6px}
+.progress-fill{height:100%;border-radius:3px;transition:width .8s ease-out}
+.divider{height:.5px;background:var(--border);margin:16px 0}
+/* Tabs */
+.tabs{display:flex;border-bottom:.5px solid var(--border);background:var(--surface);padding:0 16px}
+.tab{padding:12px 0;margin-right:28px;font-size:14px;color:var(--text3);cursor:pointer;border:none;border-bottom:2px solid transparent;background:none;font-weight:500}
+.tab.active{color:var(--pri);border-bottom-color:var(--pri)}
+.stat-card{background:var(--bg);border-radius:10px;padding:14px;text-align:center}
+.stat-val{font-size:24px;font-weight:700;color:var(--text)}
+.stat-label{font-size:12px;color:var(--text2);margin-top:2px}
+.subj-row{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:.5px solid var(--border)}
+.subj-row:last-child{border-bottom:none}
+.tl-dot{width:10px;height:10px;border-radius:50%;background:var(--pri);flex-shrink:0;margin-top:6px}
+.tl-line{position:absolute;left:4px;top:22px;bottom:-8px;width:2px;background:var(--border)}
+/* --- Gamification --- */
+.streak-xp{display:flex;gap:10px;margin-bottom:16px}
+.streak-card{flex:1;background:linear-gradient(135deg,#FAECE7,#FAEEDA);border-radius:14px;padding:14px;display:flex;align-items:center;gap:10px;border:.5px solid #F0997B33}
+.xp-card{flex:1;background:linear-gradient(135deg,#E1F5EE,#E6F1FB);border-radius:14px;padding:14px;border:.5px solid #5DCAA533}
+.streak-num{font-size:24px;font-weight:700;color:#993C1D}
+.xp-num{font-size:24px;font-weight:700;color:var(--pri)}
+.level-bar{background:var(--bg);border-radius:14px;padding:14px 16px;margin-bottom:16px;border:.5px solid var(--border)}
+.level-track{height:10px;background:#E5E5E3;border-radius:5px;overflow:hidden;margin-top:8px}
+.level-fill{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--pri-mid),var(--pri));transition:width 1.5s ease-out}
+.challenge-card{background:linear-gradient(135deg,#EEEDFE,#E6F1FB);border-radius:16px;padding:18px;margin-bottom:16px;border:.5px solid #AFA9EC44;cursor:pointer;transition:transform .15s}
+.challenge-card:hover{transform:scale(1.01)}
+.challenge-icon{width:48px;height:48px;border-radius:14px;background:#534AB7;display:flex;align-items:center;justify-content:center}
+.scan-hero{background:var(--pri);color:#fff;border:none;border-radius:16px;padding:20px;text-align:center;cursor:pointer;margin-bottom:16px;transition:transform .1s;position:relative;overflow:hidden}
+.scan-hero:hover{opacity:.95}
+.scan-hero:active{transform:scale(.98)}
+.scan-ripple{position:absolute;border:2px solid rgba(255,255,255,.15);border-radius:50%;animation:ripple 3s ease-out infinite}
+@keyframes ripple{0%{width:60px;height:60px;opacity:1}100%{width:200px;height:200px;opacity:0}}
+.quote-card{background:var(--bg);border-radius:14px;padding:16px;margin-bottom:16px;border-left:3px solid var(--acc)}
+.badge-scroll{display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;margin-bottom:16px;-webkit-overflow-scrolling:touch}
+.badge-scroll::-webkit-scrollbar{display:none}
+.badge-item{flex-shrink:0;width:72px;text-align:center}
+.badge-circle{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;border:2px solid;margin:0 auto 6px}
+.badge-circle.locked{border-style:dashed;opacity:.4}
+.badge-name{font-size:11px;color:var(--text2);font-weight:500}
+.session-score{font-size:13px;font-weight:700;padding:4px 10px;border-radius:8px}
+.bounce{animation:bounce .6s ease}
+@keyframes bounce{0%,100%{transform:translateY(0)}40%{transform:translateY(-8px)}60%{transform:translateY(-4px)}}
+</style>
+</head>
+<body>
+
+<!-- ============ SPLASH ============ -->
+<div class="screen active" id="s-splash">
+  <div class="splash-screen fade-in">
+    <div class="splash-logo">
+      <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+        <path d="M24 6C17.37 6 12 11.37 12 18c0 4.1 2.06 7.71 5.18 9.87V30c0 .95.77 1.73 1.72 1.73h10.2c.95 0 1.72-.78 1.72-1.73v-2.13C33.94 25.71 36 22.1 36 18c0-6.63-5.37-12-12-12z" fill="var(--pri)"/>
+        <rect x="17" y="34" width="14" height="4" rx="2" fill="var(--acc)"/>
+        <rect x="19" y="40" width="10" height="3" rx="1.5" fill="var(--acc)"/>
+        <circle cx="21" cy="18" r="2.5" fill="white" opacity="0.5"/>
+      </svg>
+    </div>
+    <h1 style="font-size:32px;font-weight:700;color:var(--pri);margin-bottom:8px;letter-spacing:-.5px" data-i18n="splash_title">HintStep</h1>
+    <p style="font-size:16px;color:var(--text2);line-height:1.6;max-width:300px;margin-bottom:32px">Guide your child through homework with confidence — no answers, just the right questions.</p data-i18n="splash_tagline">
+    <button class="btn btn-primary" style="width:auto;padding:16px 56px;border-radius:28px;font-size:17px" onclick="go('login')" data-i18n="splash_getstarted">Get started</button>
+    <p style="font-size:13px;color:var(--text3);margin-top:16px;font-style:italic" data-i18n="splash_motto">Hints, not answers. Steps, not shortcuts.</p>
+  </div>
+</div>
+
+<!-- ============ LOGIN ============ -->
+<div class="screen" id="s-login">
+  <div class="screen-body" style="display:flex;flex-direction:column;justify-content:center;padding:32px 24px">
+    <div style="text-align:center;margin-bottom:32px">
+      <svg width="48" height="48" viewBox="0 0 48 48" fill="none" style="margin-bottom:12px">
+        <path d="M24 6C17.37 6 12 11.37 12 18c0 4.1 2.06 7.71 5.18 9.87V30c0 .95.77 1.73 1.72 1.73h10.2c.95 0 1.72-.78 1.72-1.73v-2.13C33.94 25.71 36 22.1 36 18c0-6.63-5.37-12-12-12z" fill="var(--pri)"/>
+        <rect x="17" y="34" width="14" height="4" rx="2" fill="var(--acc)"/>
+      </svg>
+      <h2 style="font-size:24px;font-weight:700;margin-bottom:4px" data-i18n="login_title">Welcome back</h2>
+      <p style="font-size:14px;color:var(--text2)" data-i18n="login_subtitle">Sign in to continue coaching</p>
+    </div>
+    <div class="form-group">
+      <label class="form-label" data-i18n="label_email">Email</label>
+      <input class="form-input" type="email" id="login-email" placeholder="your@email.com">
+    </div>
+    <div class="form-group">
+      <label class="form-label" data-i18n="label_password">Password</label>
+      <input class="form-input" type="password" id="login-password" placeholder="Your password">
+    </div>
+    <p class="form-error" id="login-error"></p>
+    <button class="btn btn-primary" onclick="handleLogin()" id="login-btn" style="margin-top:8px" data-i18n="btn_signin">Sign in</button>
+    <div style="text-align:center;margin-top:20px">
+      <p style="font-size:14px;color:var(--text2)"><span data-i18n="login_noaccount">Don't have an account?</span> <button class="form-link" onclick="go('register')" data-i18n="login_signup">Sign up free</button></p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ REGISTER ============ -->
+<div class="screen" id="s-register">
+  <div class="screen-body" style="display:flex;flex-direction:column;justify-content:center;padding:32px 24px">
+    <div style="text-align:center;margin-bottom:32px">
+      <svg width="48" height="48" viewBox="0 0 48 48" fill="none" style="margin-bottom:12px">
+        <path d="M24 6C17.37 6 12 11.37 12 18c0 4.1 2.06 7.71 5.18 9.87V30c0 .95.77 1.73 1.72 1.73h10.2c.95 0 1.72-.78 1.72-1.73v-2.13C33.94 25.71 36 22.1 36 18c0-6.63-5.37-12-12-12z" fill="var(--pri)"/>
+        <rect x="17" y="34" width="14" height="4" rx="2" fill="var(--acc)"/>
+      </svg>
+      <h2 style="font-size:24px;font-weight:700;margin-bottom:4px" data-i18n="reg_title">Create your account</h2>
+      <p style="font-size:14px;color:var(--text2)" data-i18n="reg_subtitle">Start coaching in under a minute</p>
+    </div>
+    <div class="form-group">
+      <label class="form-label" data-i18n="label_name">Your name</label>
+      <input class="form-input" type="text" id="reg-name" placeholder="First name">
+    </div>
+    <div class="form-group">
+      <label class="form-label" data-i18n="label_email">Email</label>
+      <input class="form-input" type="email" id="reg-email" placeholder="your@email.com">
+    </div>
+    <div class="form-group">
+      <label class="form-label" data-i18n="label_password">Password</label>
+      <input class="form-input" type="password" id="reg-password" placeholder="At least 6 characters">
+    </div>
+    <p class="form-error" id="reg-error"></p>
+    <button class="btn btn-primary" onclick="handleRegister()" id="reg-btn" style="margin-top:8px" data-i18n="btn_createaccount">Create account</button>
+    <div style="text-align:center;margin-top:20px">
+      <p style="font-size:14px;color:var(--text2)"><span data-i18n="reg_hasaccount">Already have an account?</span> <button class="form-link" onclick="go('login')" data-i18n="btn_signin">Sign in</button></p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ADD CHILD ============ -->
+<div class="screen" id="s-addchild">
+  <div class="header">
+    <p class="header-title" data-i18n="addchild_title">Add your child</p>
+  </div>
+  <div class="screen-body fade-in" style="padding:24px">
+    <div style="text-align:center;margin-bottom:24px">
+      <div style="width:72px;height:72px;border-radius:50%;background:var(--pri-light);display:flex;align-items:center;justify-content:center;margin:0 auto 12px">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M12 12c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm0 2c-3.33 0-10 1.67-10 5v2h20v-2c0-3.33-6.67-5-10-5z" fill="var(--pri)"/></svg>
+      </div>
+      <p style="font-size:14px;color:var(--text2)" data-i18n="addchild_subtitle">Tell us about your child so we can personalize the coaching experience.</p>
+    </div>
+    <div class="form-group">
+      <label class="form-label" data-i18n="label_childname">Child's first name</label>
+      <input class="form-input" type="text" id="child-name" placeholder="e.g. Emma">
+    </div>
+    <div class="form-group">
+      <label class="form-label" data-i18n="label_grade">Grade level</label>
+      <select class="form-select" id="child-grade">
+        <option value="" disabled selected data-i18n="grade_select">Select grade</option>
+        <option value="K" data-i18n="grade_k">Kindergarten</option>
+        <option value="1" data-i18n="grade_1">1st Grade</option>
+        <option value="2" data-i18n="grade_2">2nd Grade</option>
+        <option value="3" data-i18n="grade_3">3rd Grade</option>
+        <option value="4" data-i18n="grade_4">4th Grade</option>
+        <option value="5" data-i18n="grade_5">5th Grade</option>
+        <option value="6" data-i18n="grade_6">6th Grade</option>
+        <option value="7" data-i18n="grade_7">7th Grade</option>
+        <option value="8" data-i18n="grade_8">8th Grade</option>
+        <option value="9" data-i18n="grade_9">9th Grade</option>
+        <option value="10" data-i18n="grade_10">10th Grade</option>
+        <option value="11" data-i18n="grade_11">11th Grade</option>
+        <option value="12" data-i18n="grade_12">12th Grade</option>
+      </select>
+    </div>
+    <p class="form-error" id="child-error"></p>
+    <button class="btn btn-primary" onclick="handleAddChild()" style="margin-top:16px" data-i18n="btn_addchild">Add child</button>
+    <div id="skip-add-child" style="text-align:center;margin-top:12px;display:none">
+      <button class="form-link" onclick="go('home')" data-i18n="btn_skip">Skip for now</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SELECT CHILD ============ -->
+<div class="screen" id="s-selectchild">
+  <div class="header">
+    <p class="header-title" data-i18n="selectchild_title">Who are we helping tonight?</p>
+  </div>
+  <div class="screen-body fade-in" id="child-list-body">
+    <!-- Filled dynamically -->
+  </div>
+</div>
+
+<!-- ============ HOME ============ -->
+<div class="screen" id="s-home">
+  <div class="header">
+    <div id="home-avatar" style="width:44px;height:44px;border-radius:50%;background:var(--pri);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;cursor:pointer" onclick="go('selectchild')"></div>
+    <div style="flex:1">
+      <p style="font-size:14px;color:var(--text2)" id="home-greeting">Good evening,</p>
+      <p class="header-title" id="home-title">Ready to help tonight?</p>
+    </div>
+    <div style="width:36px;height:36px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;cursor:pointer" onclick="go('settings')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="var(--text2)" stroke-width="1.5"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="var(--text2)" stroke-width="1.5"/></svg>
+    </div>
+  </div>
+  <div class="screen-body fade-in">
+
+    <!-- Streak & XP -->
+    <div class="streak-xp">
+      <div class="streak-card" id="streak-card">
+        <div id="flame-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M12 2C8 7 4 10 4 14a8 8 0 0016 0c0-4-4-7-8-12z" fill="#D85A30"/><path d="M12 9c-2 3-4 4.5-4 7a4 4 0 008 0c0-2.5-2-4-4-7z" fill="#EF9F27"/><path d="M12 14c-.8 1.2-2 2-2 3.5a2 2 0 004 0c0-1.5-1.2-2.3-2-3.5z" fill="#FAEEDA"/></svg>
+        </div>
+        <div>
+          <p class="streak-num" id="streak-num">0</p>
+          <p style="font-size:12px;color:#993C1D;font-weight:500" data-i18n="home_daystreak">day streak</p>
+        </div>
+      </div>
+      <div class="xp-card">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2L15 8.5 22 9.5 17 14.5 18 21.5 12 18 6 21.5 7 14.5 2 9.5 9 8.5 12 2Z" fill="var(--acc)"/></svg>
+          <p class="xp-num" id="xp-num">0</p>
+        </div>
+        <p style="font-size:12px;color:var(--pri-dark);font-weight:500" data-i18n="home_totalxp">total XP</p>
+      </div>
+    </div>
+
+    <!-- Parent Level -->
+    <div class="level-bar">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:28px;height:28px;border-radius:50%;background:var(--acc);display:flex;align-items:center;justify-content:center">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 15l-4 4h8l-4-4zm0 0V3M5 8l7-5 7 5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div>
+          <p style="font-size:14px;font-weight:600" id="level-title">Level 1 — Beginner</p>
+          <p style="font-size:12px;color:var(--text2)" id="level-subtitle">0 / 100 XP to Level 2</p>
+        </div>
+      </div>
+      <div class="level-track">
+        <div class="level-fill" id="level-fill" style="width:0%"></div>
+      </div>
+    </div>
+
+    <!-- Daily Challenge -->
+    <div class="challenge-card" onclick="go('camera')">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div class="challenge-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="#fff"/></svg>
+        </div>
+        <div style="flex:1">
+          <p style="font-size:11px;font-weight:600;color:#534AB7;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px" data-i18n="home_dailychallenge">Daily challenge</p>
+          <p style="font-size:15px;font-weight:600;color:#26215C" id="challenge-text">Complete your first session today</p>
+          <p style="font-size:13px;color:#534AB7" data-i18n="home_bonusxp">+50 bonus XP</p>
+        </div>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 18l6-6-6-6" stroke="#534AB7" stroke-width="2" stroke-linecap="round"/></svg>
+      </div>
+    </div>
+
+    <!-- BIG Scan Button -->
+    <div class="scan-hero" onclick="go('camera')">
+      <div class="scan-ripple" style="top:50%;left:50%;margin-top:-30px;margin-left:-30px"></div>
+      <div class="scan-ripple" style="top:50%;left:50%;margin-top:-30px;margin-left:-30px;animation-delay:1s"></div>
+      <div style="position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:12px">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <rect x="3" y="9" width="26" height="18" rx="3" stroke="#fff" stroke-width="1.5" fill="none"/>
+          <circle cx="16" cy="18" r="6" stroke="#fff" stroke-width="1.5" fill="none"/>
+          <path d="M11 9L12.5 5H19.5L21 9" stroke="#fff" stroke-width="1.5" fill="none"/>
+        </svg>
+        <div style="text-align:left">
+          <p style="font-size:17px;font-weight:600" data-i18n="home_snap">Snap the assignment</p>
+          <p style="font-size:13px;opacity:.8" data-i18n="home_xppersession">+25 XP per session</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quote of the Day -->
+    <div class="quote-card">
+      <p style="font-size:14px;color:var(--text);line-height:1.6;font-style:italic" id="daily-quote">"The greatest gift you can give your child isn't the answer — it's the confidence to find it themselves."</p>
+      <p style="font-size:12px;color:var(--acc-dark);margin-top:6px;font-weight:500" data-i18n="home_dailyinspiration">Daily inspiration</p>
+    </div>
+
+    <!-- Badges -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <p style="font-size:14px;font-weight:600;color:var(--text2)" data-i18n="home_badgesearned">Badges earned</p>
+    </div>
+    <div class="badge-scroll" id="badges-container">
+      <div class="badge-item">
+        <div class="badge-circle locked" style="background:var(--bg);border-color:var(--text3)"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2C8 7 4 10 4 14a8 8 0 0016 0c0-4-4-7-8-12z" fill="var(--text3)"/></svg></div>
+        <p class="badge-name">3-day streak</p>
+      </div>
+      <div class="badge-item">
+        <div class="badge-circle locked" style="background:var(--bg);border-color:var(--text3)"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2L15 8.5 22 9.5 17 14.5 18 21.5 12 18 6 21.5 7 14.5 2 9.5 9 8.5 12 2Z" fill="var(--text3)"/></svg></div>
+        <p class="badge-name">First session</p>
+      </div>
+      <div class="badge-item">
+        <div class="badge-circle locked" style="background:var(--bg);border-color:var(--text3)"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M12 2a10 10 0 100 20 10 10 0 000-20z" stroke="var(--text3)" stroke-width="2" fill="none"/></svg></div>
+        <p class="badge-name">10 sessions</p>
+      </div>
+      <div class="badge-item">
+        <div class="badge-circle locked" style="background:var(--bg);border-color:var(--text3)"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 6v6l4 2M12 2a10 10 0 100 20 10 10 0 000-20z" stroke="var(--text3)" stroke-width="2" fill="none"/></svg></div>
+        <p class="badge-name">Speed run</p>
+      </div>
+    </div>
+
+    <!-- Recent Sessions -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <p style="font-size:14px;font-weight:600;color:var(--text2)" data-i18n="home_recentsessions">Recent sessions</p>
+      <button class="header-action" onclick="go('progress')" data-i18n="home_viewall">View all</button>
+    </div>
+    <div id="recent-sessions">
+      <p style="font-size:14px;color:var(--text3);text-align:center;padding:24px 0">No sessions yet — snap your first assignment to get started!</p>
+    </div>
+  </div>
+  <div class="nav">
+    <button class="nav-item active" onclick="go('home')"><svg viewBox="0 0 24 24" fill="none"><path d="M3 12L12 3l9 9M5 10v10a1 1 0 001 1h3a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1h3a1 1 0 001-1V10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-i18n="nav_home">Home</span></button>
+    <button class="nav-item" onclick="go('camera')"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="7" width="18" height="13" rx="2" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="13.5" r="3.5" stroke="currentColor" stroke-width="1.5"/><path d="M8.5 7L9.5 4h5l1 3" stroke="currentColor" stroke-width="1.5"/></svg><span data-i18n="nav_scan">Scan</span></button>
+    <button class="nav-item" onclick="go('cheatsheet')"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3C8.13 3 5 6.13 5 10c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-1.26c1.81-1.27 3-3.36 3-5.74 0-3.87-3.13-7-7-7z" stroke="currentColor" stroke-width="1.5" fill="none"/><line x1="9" y1="19.5" x2="15" y2="19.5" stroke="currentColor" stroke-width="1.5"/><line x1="10" y1="21.5" x2="14" y2="21.5" stroke="currentColor" stroke-width="1.5"/></svg><span data-i18n="nav_hints">Hints</span></button>
+    <button class="nav-item" onclick="go('progress')"><svg viewBox="0 0 24 24" fill="none"><path d="M3 20h18M6 16v4M10 12v8M14 8v12M18 4v16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-i18n="nav_progress">Progress</span></button>
+  </div>
+</div>
+
+<!-- ============ CAMERA ============ -->
+<div class="screen" id="s-camera">
+  <div class="header">
+    <button class="back-btn" onclick="go('home')">&#8592;</button>
+    <p class="header-title" data-i18n="camera_title">Capture assignment</p>
+    <div id="camera-child-badge"></div>
+  </div>
+  <div class="screen-body fade-in" style="display:flex;flex-direction:column;gap:16px">
+    <div class="upload-area" onclick="document.getElementById('file-input').click()">
+      <div id="upload-placeholder" style="text-align:center">
+        <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+          <rect x="8" y="16" width="48" height="36" rx="4" stroke="var(--text3)" stroke-width="1.5" fill="none"/>
+          <circle cx="32" cy="34" r="10" stroke="var(--text3)" stroke-width="1.5" fill="none"/>
+          <circle cx="32" cy="34" r="4" fill="var(--text3)" opacity="0.2"/>
+        </svg>
+        <p style="font-size:14px;color:var(--text3);margin-top:10px" data-i18n="camera_tap">Tap to upload a homework photo</p>
+      </div>
+      <img id="preview-img" style="display:none" alt="Homework preview">
+    </div>
+    <input type="file" id="file-input" accept="image/*" capture="environment" onchange="handleFile(event)">
+    <button class="btn btn-primary" id="analyze-btn" onclick="analyzeHomework()" disabled data-i18n="camera_analyze">Analyze assignment</button>
+    <div style="background:var(--pri-light);border-radius:12px;padding:14px 16px">
+      <p style="font-size:14px;color:var(--pri-dark);line-height:1.5"><span data-i18n="camera_tips"><strong>Tips:</strong> Full page visible, good lighting, keep it flat.</span></p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SCANNING ============ -->
+<div class="screen" id="s-scanning">
+  <div class="screen-body" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:24px">
+    <div class="scan-container">
+      <div style="padding:24px;text-align:left">
+        <div style="height:7px;width:80%;background:var(--border);border-radius:4px;margin-bottom:10px"></div>
+        <div style="height:7px;width:55%;background:var(--border);border-radius:4px;margin-bottom:10px"></div>
+        <div style="height:7px;width:90%;background:var(--border);border-radius:4px;margin-bottom:18px"></div>
+        <div style="height:7px;width:65%;background:var(--border);border-radius:4px;margin-bottom:10px"></div>
+        <div style="height:7px;width:85%;background:var(--border);border-radius:4px;margin-bottom:10px"></div>
+        <div style="height:7px;width:45%;background:var(--border);border-radius:4px;margin-bottom:18px"></div>
+        <div style="height:7px;width:75%;background:var(--border);border-radius:4px;margin-bottom:10px"></div>
+        <div style="height:7px;width:60%;background:var(--border);border-radius:4px"></div>
+      </div>
+      <div class="scan-line"></div>
+    </div>
+    <div>
+      <p style="font-size:18px;font-weight:600" id="scan-status" data-i18n="scan_analyzing">Analyzing assignment...</p>
+      <div class="pulse-dots"><span></span><span></span><span></span></div>
+      <p style="font-size:14px;color:var(--text2)" id="scan-detail" data-i18n="scan_sending">Sending to AI for analysis</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ RESULTS ============ -->
+<div class="screen" id="s-results">
+  <div class="header">
+    <button class="back-btn" onclick="go('home')">&#8592;</button>
+    <p class="header-title" data-i18n="results_title">Coaching guide</p>
+    <button class="header-action" onclick="go('cheatsheet')" data-i18n="results_cheatsheet">Cheat sheet</button>
+  </div>
+  <div class="screen-body fade-in" id="results-body"></div>
+</div>
+
+<!-- ============ CHEAT SHEET ============ -->
+<div class="screen" id="s-cheatsheet">
+  <div class="header">
+    <button class="back-btn" onclick="go('results')">&#8592;</button>
+    <p class="header-title" data-i18n="cheat_title">Parent cheat sheet</p>
+  </div>
+  <div class="screen-body fade-in" id="cheatsheet-body">
+    <p style="font-size:14px;color:var(--text3);text-align:center;padding:40px 0" data-i18n="cheat_empty">Scan an assignment first to see your cheat sheet here.</p>
+  </div>
+</div>
+
+<!-- ============ PROGRESS ============ -->
+<div class="screen" id="s-progress">
+  <div class="header">
+    <button class="back-btn" onclick="go('home')">&#8592;</button>
+    <p class="header-title" id="progress-title" data-i18n="progress_title">Progress</p>
+  </div>
+  <div class="screen-body fade-in" id="progress-body">
+    <p style="font-size:14px;color:var(--text3);text-align:center;padding:40px 0" data-i18n="progress_empty">Complete a few sessions to see progress here.</p>
+  </div>
+</div>
+
+<!-- ============ SETTINGS ============ -->
+<div class="screen" id="s-settings">
+  <div class="header">
+    <button class="back-btn" onclick="go('home')">&#8592;</button>
+    <p class="header-title" data-i18n="settings_title">Settings</p>
+  </div>
+  <div class="screen-body fade-in">
+    <div class="form-group" style="margin-bottom:20px">
+      <label class="form-label" data-i18n="settings_language">Language</label>
+      <select class="form-select" id="lang-select" onchange="changeLanguage(this.value)">
+        <option value="en">English</option>
+        <option value="es">Español</option>
+        <option value="zh">中文</option>
+        <option value="vi">Tiếng Việt</option>
+        <option value="ar">العربية</option>
+        <option value="ko">한국어</option>
+        <option value="tl">Filipino</option>
+        <option value="fr">Français</option>
+        <option value="pt">Português</option>
+        <option value="ht">Kreyòl Ayisyen</option>
+        <option value="ru">Русский</option>
+        <option value="hi">हिन्दी</option>
+        <option value="ja">日本語</option>
+        <option value="ur">اردو</option>
+        <option value="pl">Polski</option>
+      </select>
+    </div>
+    <div class="divider"></div>
+    <p style="font-size:14px;font-weight:600;color:var(--text2);margin-bottom:12px" data-i18n="settings_children">Your children</p>
+    <div id="settings-children"></div>
+    <button class="btn btn-outline" onclick="go('addchild')" style="margin-top:8px;margin-bottom:24px" data-i18n="settings_addchild">+ Add another child</button>
+    <div class="divider"></div>
+    <button class="btn btn-outline" onclick="handleLogout()" style="margin-top:8px;color:var(--danger);border-color:var(--danger)" data-i18n="btn_signout">Sign out</button>
+  </div>
+</div>
+
+<!-- ============ ERROR ============ -->
+<div class="screen" id="s-error">
+  <div class="header">
+    <button class="back-btn" onclick="go('camera')">&#8592;</button>
+    <p class="header-title" data-i18n="error_oops">Oops</p>
+  </div>
+  <div class="screen-body" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:16px">
+    <div style="width:64px;height:64px;border-radius:50%;background:#FCEBEB;display:flex;align-items:center;justify-content:center;font-size:28px">!</div>
+    <p style="font-size:16px;font-weight:600" id="error-title" data-i18n="error_title">Something went wrong</p>
+    <p style="font-size:14px;color:var(--text2);max-width:300px" id="error-msg" data-i18n="error_msg">Please try again.</p>
+    <button class="btn btn-primary" style="width:auto;padding:14px 40px;margin-top:8px" onclick="go('camera')" data-i18n="btn_tryagain">Try again</button>
+  </div>
+</div>
+
+<script>
+// ==========================================
+// CONFIG — Replace with your Supabase keys
+// ==========================================
+// Initialize Supabase — loads config from serverless function
+let sb = null;
+
+// ==========================================
+// INTERNATIONALIZATION (i18n)
+// ==========================================
+var currentLang = localStorage.getItem('hintstep_lang') || 'en';
+
+var translations = {
+  "en": {
+    "splash_title": "HintStep",
+    "splash_tagline": "Guide your child through homework with confidence — no answers, just the right questions.",
+    "splash_getstarted": "Get started",
+    "splash_motto": "Hints, not answers. Steps, not shortcuts.",
+    "login_title": "Welcome back",
+    "login_subtitle": "Sign in to continue coaching",
+    "label_email": "Email",
+    "label_password": "Password",
+    "btn_signin": "Sign in",
+    "login_noaccount": "Don't have an account?",
+    "login_signup": "Sign up free",
+    "reg_title": "Create your account",
+    "reg_subtitle": "Start coaching in under a minute",
+    "label_name": "Your name",
+    "btn_createaccount": "Create account",
+    "reg_hasaccount": "Already have an account?",
+    "addchild_title": "Add your child",
+    "addchild_subtitle": "Tell us about your child so we can personalize the coaching experience.",
+    "label_childname": "Child's first name",
+    "label_grade": "Grade level",
+    "grade_select": "Select grade",
+    "grade_k": "Kindergarten",
+    "grade_1": "1st Grade",
+    "grade_2": "2nd Grade",
+    "grade_3": "3rd Grade",
+    "grade_4": "4th Grade",
+    "grade_5": "5th Grade",
+    "grade_6": "6th Grade",
+    "grade_7": "7th Grade",
+    "grade_8": "8th Grade",
+    "grade_9": "9th Grade",
+    "grade_10": "10th Grade",
+    "grade_11": "11th Grade",
+    "grade_12": "12th Grade",
+    "btn_addchild": "Add child",
+    "btn_skip": "Skip for now",
+    "selectchild_title": "Who are we helping tonight?",
+    "nav_home": "Home",
+    "nav_scan": "Scan",
+    "nav_hints": "Hints",
+    "nav_progress": "Progress",
+    "home_daystreak": "day streak",
+    "home_totalxp": "total XP",
+    "home_dailychallenge": "Daily challenge",
+    "home_bonusxp": "+50 bonus XP",
+    "home_snap": "Snap the assignment",
+    "home_xppersession": "+25 XP per session",
+    "home_dailyinspiration": "Daily inspiration",
+    "home_badgesearned": "Badges earned",
+    "home_recentsessions": "Recent sessions",
+    "home_viewall": "View all",
+    "home_ready": "Ready to help tonight?",
+    "home_helping": "Helping {name} tonight",
+    "home_greeting_morning": "Good morning",
+    "home_greeting_afternoon": "Good afternoon",
+    "home_greeting_evening": "Good evening",
+    "home_hey": "Hey {name},",
+    "home_nosessions": "No sessions yet — snap your first assignment to get started",
+    "home_challenge_first": "Complete your first session today",
+    "home_challenge_second": "Complete a second session today",
+    "home_challenge_more": "{n} sessions done — keep going",
+    "camera_title": "Capture assignment",
+    "camera_tap": "Tap to upload a homework photo",
+    "camera_analyze": "Analyze assignment",
+    "camera_tips": "Tips: Full page visible, good lighting, keep it flat.",
+    "scan_analyzing": "Analyzing assignment...",
+    "scan_sending": "Sending to AI for analysis",
+    "scan_reading": "Reading the problems...",
+    "scan_identifying": "Identifying subject and grade level",
+    "scan_building": "Building your coaching guide...",
+    "scan_creating": "Creating guiding questions",
+    "scan_almost": "Almost there...",
+    "scan_polishing": "Polishing your cheat sheet",
+    "results_title": "Coaching guide",
+    "results_cheatsheet": "Cheat sheet",
+    "cheat_title": "Parent cheat sheet",
+    "cheat_empty": "Scan an assignment first to see your cheat sheet here.",
+    "progress_title": "Progress",
+    "progress_empty": "Complete a few sessions to see progress here.",
+    "settings_title": "Settings",
+    "settings_language": "Language",
+    "settings_children": "Your children",
+    "settings_addchild": "+ Add another child",
+    "btn_signout": "Sign out",
+    "error_oops": "Oops",
+    "error_title": "Something went wrong",
+    "error_msg": "Please try again.",
+    "btn_tryagain": "Try again",
+    "level_label": "Level {n} — {title}",
+    "xp_to_level": "{current} / {needed} XP to Level {next}",
+    "badge_3day": "3-day streak",
+    "badge_first": "First session",
+    "badge_10sessions": "10 sessions",
+    "badge_speed": "Speed run",
+    "badge_multi": "Multi-subject",
+    "badge_7day": "7-day streak",
+    "btn_done": "Done — back to home",
+    "results_stepbystep": "Step-by-step coaching",
+    "results_askyourchild": "Ask your child:",
+    "results_parenttip": "Parent tip:",
+    "results_ifstuck": "If they're stuck:",
+    "results_wrapup": "Session wrap-up",
+    "cheat_30sec": "The concept in 30 seconds",
+    "cheat_worked": "Worked example",
+    "cheat_mistakes": "Watch out for these mistakes",
+    "cheat_vocab": "Vocabulary",
+    "progress_sessions": "Sessions",
+    "progress_problems": "Problems",
+    "progress_subjects": "Subjects",
+    "progress_bysubject": "By subject",
+    "progress_recentsessions": "Recent sessions",
+    "progress_childname": "{name}'s progress"
+  },
+  "es": {
+    "splash_title": "HintStep",
+    "splash_tagline": "Guía a tu hijo en la tarea con confianza — sin respuestas, solo las preguntas correctas.",
+    "splash_getstarted": "Comenzar",
+    "splash_motto": "Pistas, no respuestas. Pasos, no atajos.",
+    "login_title": "Bienvenido de nuevo",
+    "login_subtitle": "Inicia sesión para seguir enseñando",
+    "label_email": "Correo electrónico",
+    "label_password": "Contraseña",
+    "btn_signin": "Iniciar sesión",
+    "login_noaccount": "¿No tienes cuenta?",
+    "login_signup": "Regístrate gratis",
+    "reg_title": "Crea tu cuenta",
+    "reg_subtitle": "Empieza a enseñar en menos de un minuto",
+    "label_name": "Tu nombre",
+    "btn_createaccount": "Crear cuenta",
+    "reg_hasaccount": "¿Ya tienes cuenta?",
+    "addchild_title": "Agrega a tu hijo",
+    "addchild_subtitle": "Cuéntanos sobre tu hijo para personalizar la experiencia.",
+    "label_childname": "Nombre del niño",
+    "label_grade": "Nivel escolar",
+    "grade_select": "Seleccionar grado",
+    "grade_k": "Kinder",
+    "grade_1": "1er Grado",
+    "grade_2": "2do Grado",
+    "grade_3": "3er Grado",
+    "grade_4": "4to Grado",
+    "grade_5": "5to Grado",
+    "grade_6": "6to Grado",
+    "grade_7": "7mo Grado",
+    "grade_8": "8vo Grado",
+    "grade_9": "9no Grado",
+    "grade_10": "10mo Grado",
+    "grade_11": "11vo Grado",
+    "grade_12": "12vo Grado",
+    "btn_addchild": "Agregar hijo",
+    "btn_skip": "Omitir por ahora",
+    "selectchild_title": "¿A quién ayudamos esta noche?",
+    "nav_home": "Inicio",
+    "nav_scan": "Escanear",
+    "nav_hints": "Pistas",
+    "nav_progress": "Progreso",
+    "home_daystreak": "días seguidos",
+    "home_totalxp": "XP total",
+    "home_dailychallenge": "Reto diario",
+    "home_bonusxp": "+50 XP extra",
+    "home_snap": "Fotografiar la tarea",
+    "home_xppersession": "+25 XP por sesión",
+    "home_dailyinspiration": "Inspiración diaria",
+    "home_badgesearned": "Insignias ganadas",
+    "home_recentsessions": "Sesiones recientes",
+    "home_viewall": "Ver todo",
+    "home_ready": "¿Listo para ayudar esta noche?",
+    "home_helping": "Ayudando a {name} esta noche",
+    "home_greeting_morning": "Buenos días",
+    "home_greeting_afternoon": "Buenas tardes",
+    "home_greeting_evening": "Buenas noches",
+    "home_hey": "Hola {name},",
+    "home_nosessions": "Aún no hay sesiones — escanea tu primera tarea.",
+    "home_challenge_first": "Completa tu primera sesión hoy",
+    "home_challenge_second": "Completa una segunda sesión hoy",
+    "home_challenge_more": "{n} sesiones hechas — sigue así",
+    "camera_title": "Capturar tarea",
+    "camera_tap": "Toca para subir una foto",
+    "camera_analyze": "Analizar tarea",
+    "camera_tips": "Consejos: Página completa, buena luz, manténla plana.",
+    "scan_analyzing": "Analizando...",
+    "scan_sending": "Enviando al AI",
+    "scan_reading": "Leyendo los problemas...",
+    "scan_identifying": "Identificando materia y grado",
+    "scan_building": "Creando tu guía...",
+    "scan_creating": "Generando preguntas",
+    "scan_almost": "Casi listo...",
+    "scan_polishing": "Puliendo la guía rápida",
+    "results_title": "Guía de enseñanza",
+    "results_cheatsheet": "Guía rápida",
+    "cheat_title": "Guía rápida para padres",
+    "cheat_empty": "Escanea una tarea primero.",
+    "progress_title": "Progreso",
+    "progress_empty": "Completa algunas sesiones para ver el progreso.",
+    "settings_title": "Configuración",
+    "settings_language": "Idioma",
+    "settings_children": "Tus hijos",
+    "settings_addchild": "+ Agregar otro hijo",
+    "btn_signout": "Cerrar sesión",
+    "error_oops": "Ups",
+    "error_title": "Algo salió mal",
+    "error_msg": "Inténtalo de nuevo.",
+    "btn_tryagain": "Reintentar",
+    "level_label": "Nivel {n} — {title}",
+    "xp_to_level": "{current} / {needed} XP para Nivel {next}",
+    "badge_3day": "3 días",
+    "badge_first": "Primera sesión",
+    "badge_10sessions": "10 sesiones",
+    "badge_speed": "Veloz",
+    "badge_multi": "Multi-materia",
+    "badge_7day": "7 días",
+    "btn_done": "Listo — volver al inicio",
+    "results_stepbystep": "Paso a paso",
+    "results_askyourchild": "Pregúntale:",
+    "results_parenttip": "Consejo:",
+    "results_ifstuck": "Si se atasca:",
+    "results_wrapup": "Cierre de sesión",
+    "cheat_30sec": "El concepto en 30 segundos",
+    "cheat_worked": "Ejemplo resuelto",
+    "cheat_mistakes": "Cuidado con estos errores",
+    "cheat_vocab": "Vocabulario",
+    "progress_sessions": "Sesiones",
+    "progress_problems": "Problemas",
+    "progress_subjects": "Materias",
+    "progress_bysubject": "Por materia",
+    "progress_recentsessions": "Sesiones recientes",
+    "progress_childname": "Progreso de {name}"
+  },
+  "zh": {
+    "splash_title": "HintStep",
+    "splash_tagline": "自信地引导孩子完成作业——不给答案，只问对的问题。",
+    "splash_getstarted": "开始使用",
+    "splash_motto": "提示，不是答案。步骤，不是捷径。",
+    "login_title": "欢迎回来",
+    "login_subtitle": "登录继续辅导",
+    "label_email": "电子邮件",
+    "label_password": "密码",
+    "btn_signin": "登录",
+    "login_noaccount": "没有账户？",
+    "login_signup": "免费注册",
+    "reg_title": "创建账户",
+    "reg_subtitle": "一分钟内开始",
+    "label_name": "你的名字",
+    "btn_createaccount": "创建账户",
+    "reg_hasaccount": "已有账户？",
+    "addchild_title": "添加孩子",
+    "addchild_subtitle": "告诉我们关于你孩子的信息。",
+    "label_childname": "孩子的名字",
+    "label_grade": "年级",
+    "grade_select": "选择年级",
+    "grade_k": "幼儿园",
+    "grade_1": "一年级",
+    "grade_2": "二年级",
+    "grade_3": "三年级",
+    "grade_4": "四年级",
+    "grade_5": "五年级",
+    "grade_6": "六年级",
+    "grade_7": "七年级",
+    "grade_8": "八年级",
+    "grade_9": "九年级",
+    "grade_10": "十年级",
+    "grade_11": "十一年级",
+    "grade_12": "十二年级",
+    "btn_addchild": "添加",
+    "btn_skip": "跳过",
+    "selectchild_title": "今晚帮助谁？",
+    "nav_home": "首页",
+    "nav_scan": "扫描",
+    "nav_hints": "提示",
+    "nav_progress": "进度",
+    "home_daystreak": "天连续",
+    "home_totalxp": "总 XP",
+    "home_dailychallenge": "每日挑战",
+    "home_bonusxp": "+50 额外 XP",
+    "home_snap": "拍摄作业",
+    "home_xppersession": "每次 +25 XP",
+    "home_dailyinspiration": "每日灵感",
+    "home_badgesearned": "已获得徽章",
+    "home_recentsessions": "最近的辅导",
+    "home_viewall": "查看全部",
+    "home_ready": "今晚准备好了吗？",
+    "home_helping": "今晚帮助 {name}",
+    "home_greeting_morning": "早上好",
+    "home_greeting_afternoon": "下午好",
+    "home_greeting_evening": "晚上好",
+    "home_hey": "你好 {name}，",
+    "home_nosessions": "还没有记录——扫描第一份作业吧",
+    "home_challenge_first": "今天完成第一次",
+    "home_challenge_second": "今天完成第二次",
+    "home_challenge_more": "已完成 {n} 次——继续",
+    "camera_title": "拍摄作业",
+    "camera_tap": "点击上传照片",
+    "camera_analyze": "分析作业",
+    "camera_tips": "提示：显示整页，光线充足，保持平整。",
+    "scan_analyzing": "分析中...",
+    "scan_sending": "发送给AI",
+    "scan_reading": "阅读题目...",
+    "scan_identifying": "识别科目和年级",
+    "scan_building": "创建指南...",
+    "scan_creating": "生成问题",
+    "scan_almost": "快完成了...",
+    "scan_polishing": "完善快速指南",
+    "results_title": "辅导指南",
+    "results_cheatsheet": "快速指南",
+    "cheat_title": "家长快速指南",
+    "cheat_empty": "先扫描作业。",
+    "progress_title": "进度",
+    "progress_empty": "完成几次后查看进度。",
+    "settings_title": "设置",
+    "settings_language": "语言",
+    "settings_children": "你的孩子",
+    "settings_addchild": "+ 添加孩子",
+    "btn_signout": "退出",
+    "error_oops": "哎呀",
+    "error_title": "出了问题",
+    "error_msg": "请重试。",
+    "btn_tryagain": "重试",
+    "level_label": "等级 {n} — {title}",
+    "xp_to_level": "{current} / {needed} XP 到等级 {next}",
+    "badge_3day": "3天连续",
+    "badge_first": "第一次",
+    "badge_10sessions": "10次",
+    "badge_speed": "快速",
+    "badge_multi": "多科目",
+    "badge_7day": "7天连续",
+    "btn_done": "完成——回首页",
+    "results_stepbystep": "逐步辅导",
+    "results_askyourchild": "问孩子：",
+    "results_parenttip": "家长提示：",
+    "results_ifstuck": "如果卡住：",
+    "results_wrapup": "总结",
+    "cheat_30sec": "30秒了解",
+    "cheat_worked": "解题示例",
+    "cheat_mistakes": "注意错误",
+    "cheat_vocab": "词汇",
+    "progress_sessions": "辅导",
+    "progress_problems": "题目",
+    "progress_subjects": "科目",
+    "progress_bysubject": "按科目",
+    "progress_recentsessions": "最近的辅导",
+    "progress_childname": "{name}的进度"
+  },
+  "vi": {
+    "splash_title": "HintStep",
+    "splash_tagline": "Hướng dẫn con làm bài với sự tự tin — không cho đáp án, chỉ đặt câu hỏi đúng.",
+    "splash_getstarted": "Bắt đầu",
+    "splash_motto": "Gợi ý, không phải đáp án.",
+    "login_title": "Chào mừng",
+    "login_subtitle": "Đăng nhập để tiếp tục",
+    "label_email": "Email",
+    "label_password": "Mật khẩu",
+    "btn_signin": "Đăng nhập",
+    "login_noaccount": "Chưa có tài khoản?",
+    "login_signup": "Đăng ký miễn phí",
+    "reg_title": "Tạo tài khoản",
+    "reg_subtitle": "Bắt đầu trong một phút",
+    "label_name": "Tên của bạn",
+    "btn_createaccount": "Tạo tài khoản",
+    "reg_hasaccount": "Đã có tài khoản?",
+    "addchild_title": "Thêm con",
+    "addchild_subtitle": "Cho chúng tôi biết về con bạn.",
+    "label_childname": "Tên con",
+    "label_grade": "Lớp",
+    "grade_select": "Chọn lớp",
+    "grade_k": "Mẫu giáo",
+    "grade_1": "Lớp 1",
+    "grade_2": "Lớp 2",
+    "grade_3": "Lớp 3",
+    "grade_4": "Lớp 4",
+    "grade_5": "Lớp 5",
+    "grade_6": "Lớp 6",
+    "grade_7": "Lớp 7",
+    "grade_8": "Lớp 8",
+    "grade_9": "Lớp 9",
+    "grade_10": "Lớp 10",
+    "grade_11": "Lớp 11",
+    "grade_12": "Lớp 12",
+    "btn_addchild": "Thêm",
+    "btn_skip": "Bỏ qua",
+    "selectchild_title": "Tối nay giúp ai?",
+    "nav_home": "Trang chủ",
+    "nav_scan": "Quét",
+    "nav_hints": "Gợi ý",
+    "nav_progress": "Tiến độ",
+    "home_daystreak": "ngày liên tiếp",
+    "home_totalxp": "tổng XP",
+    "home_dailychallenge": "Thử thách",
+    "home_bonusxp": "+50 XP thưởng",
+    "home_snap": "Chụp bài tập",
+    "home_xppersession": "+25 XP mỗi lần",
+    "home_dailyinspiration": "Cảm hứng",
+    "home_badgesearned": "Huy hiệu",
+    "home_recentsessions": "Gần đây",
+    "home_viewall": "Xem tất cả",
+    "home_ready": "Sẵn sàng giúp tối nay?",
+    "home_helping": "Giúp {name} tối nay",
+    "home_greeting_morning": "Chào buổi sáng",
+    "home_greeting_afternoon": "Chào buổi chiều",
+    "home_greeting_evening": "Chào buổi tối",
+    "home_hey": "Xin chào {name},",
+    "home_nosessions": "Chưa có phiên nào — chụp bài đầu tiên",
+    "home_challenge_first": "Hoàn thành phiên đầu tiên",
+    "home_challenge_second": "Hoàn thành phiên thứ hai",
+    "home_challenge_more": "Đã xong {n} phiên — tiếp tục",
+    "camera_title": "Chụp bài",
+    "camera_tap": "Nhấn để tải ảnh",
+    "camera_analyze": "Phân tích",
+    "camera_tips": "Mẹo: Toàn trang, đủ sáng, giữ phẳng.",
+    "scan_analyzing": "Phân tích...",
+    "scan_sending": "Gửi cho AI",
+    "scan_reading": "Reading the problems...",
+    "scan_identifying": "Identifying subject and grade level",
+    "scan_building": "Building your coaching guide...",
+    "scan_creating": "Creating guiding questions",
+    "scan_almost": "Almost there...",
+    "scan_polishing": "Polishing your cheat sheet",
+    "results_title": "Hướng dẫn",
+    "results_cheatsheet": "Tóm tắt",
+    "cheat_title": "Tóm tắt cho phụ huynh",
+    "cheat_empty": "Quét bài trước.",
+    "progress_title": "Tiến độ",
+    "progress_empty": "Hoàn thành vài phiên.",
+    "settings_title": "Cài đặt",
+    "settings_language": "Ngôn ngữ",
+    "settings_children": "Con của bạn",
+    "settings_addchild": "+ Thêm con",
+    "btn_signout": "Đăng xuất",
+    "error_oops": "Oops",
+    "error_title": "Có lỗi",
+    "error_msg": "Thử lại.",
+    "btn_tryagain": "Thử lại",
+    "level_label": "Level {n} — {title}",
+    "xp_to_level": "{current} / {needed} XP to Level {next}",
+    "badge_3day": "3-day streak",
+    "badge_first": "First session",
+    "badge_10sessions": "10 sessions",
+    "badge_speed": "Speed run",
+    "badge_multi": "Multi-subject",
+    "badge_7day": "7-day streak",
+    "btn_done": "Xong — về trang chủ",
+    "results_stepbystep": "Từng bước",
+    "results_askyourchild": "Hỏi con:",
+    "results_parenttip": "Mẹo:",
+    "results_ifstuck": "Nếu kẹt:",
+    "results_wrapup": "Tổng kết",
+    "cheat_30sec": "The concept in 30 seconds",
+    "cheat_worked": "Worked example",
+    "cheat_mistakes": "Watch out for these mistakes",
+    "cheat_vocab": "Vocabulary",
+    "progress_sessions": "Sessions",
+    "progress_problems": "Problems",
+    "progress_subjects": "Subjects",
+    "progress_bysubject": "By subject",
+    "progress_recentsessions": "Recent sessions",
+    "progress_childname": "Tiến độ của {name}"
+  },
+  "ar": {
+    "splash_title": "HintStep",
+    "splash_tagline": "ساعد طفلك في الواجبات بثقة — بدون إجابات، فقط الأسئلة الصحيحة.",
+    "splash_getstarted": "ابدأ",
+    "splash_motto": "Hints, not answers. Steps, not shortcuts.",
+    "login_title": "مرحباً",
+    "login_subtitle": "سجّل الدخول",
+    "label_email": "البريد",
+    "label_password": "كلمة المرور",
+    "btn_signin": "دخول",
+    "login_noaccount": "ليس لديك حساب؟",
+    "login_signup": "سجّل مجاناً",
+    "reg_title": "أنشئ حسابك",
+    "reg_subtitle": "Start coaching in under a minute",
+    "label_name": "اسمك",
+    "btn_createaccount": "إنشاء حساب",
+    "reg_hasaccount": "لديك حساب؟",
+    "addchild_title": "أضف طفلك",
+    "addchild_subtitle": "Tell us about your child so we can personalize the coaching experience.",
+    "label_childname": "اسم الطفل",
+    "label_grade": "الصف",
+    "grade_select": "اختر",
+    "grade_k": "روضة",
+    "grade_1": "الصف 1",
+    "grade_2": "الصف 2",
+    "grade_3": "الصف 3",
+    "grade_4": "الصف 4",
+    "grade_5": "الصف 5",
+    "grade_6": "الصف 6",
+    "grade_7": "الصف 7",
+    "grade_8": "الصف 8",
+    "grade_9": "الصف 9",
+    "grade_10": "الصف 10",
+    "grade_11": "الصف 11",
+    "grade_12": "الصف 12",
+    "btn_addchild": "أضف",
+    "btn_skip": "تخطي",
+    "selectchild_title": "من نساعد الليلة؟",
+    "nav_home": "الرئيسية",
+    "nav_scan": "مسح",
+    "nav_hints": "تلميحات",
+    "nav_progress": "التقدم",
+    "home_daystreak": "يوم متتالي",
+    "home_totalxp": "إجمالي XP",
+    "home_dailychallenge": "Daily challenge",
+    "home_bonusxp": "+50 bonus XP",
+    "home_snap": "Snap the assignment",
+    "home_xppersession": "+25 XP per session",
+    "home_dailyinspiration": "Daily inspiration",
+    "home_badgesearned": "Badges earned",
+    "home_recentsessions": "Recent sessions",
+    "home_viewall": "View all",
+    "home_ready": "مستعد للمساعدة؟",
+    "home_helping": "نساعد {name}",
+    "home_greeting_morning": "صباح الخير",
+    "home_greeting_afternoon": "مساء الخير",
+    "home_greeting_evening": "مساء الخير",
+    "home_hey": "Hey {name},",
+    "home_nosessions": "No sessions yet — snap your first assignment to get started",
+    "home_challenge_first": "Complete your first session today",
+    "home_challenge_second": "Complete a second session today",
+    "home_challenge_more": "{n} sessions done — keep going",
+    "camera_title": "تصوير الواجب",
+    "camera_tap": "Tap to upload a homework photo",
+    "camera_analyze": "تحليل",
+    "camera_tips": "Tips: Full page visible, good lighting, keep it flat.",
+    "scan_analyzing": "Analyzing assignment...",
+    "scan_sending": "Sending to AI for analysis",
+    "scan_reading": "Reading the problems...",
+    "scan_identifying": "Identifying subject and grade level",
+    "scan_building": "Building your coaching guide...",
+    "scan_creating": "Creating guiding questions",
+    "scan_almost": "Almost there...",
+    "scan_polishing": "Polishing your cheat sheet",
+    "results_title": "دليل التوجيه",
+    "results_cheatsheet": "Cheat sheet",
+    "cheat_title": "Parent cheat sheet",
+    "cheat_empty": "Scan an assignment first to see your cheat sheet here.",
+    "progress_title": "Progress",
+    "progress_empty": "Complete a few sessions to see progress here.",
+    "settings_title": "الإعدادات",
+    "settings_language": "اللغة",
+    "settings_children": "أطفالك",
+    "settings_addchild": "+ Add another child",
+    "btn_signout": "خروج",
+    "error_oops": "Oops",
+    "error_title": "Something went wrong",
+    "error_msg": "Please try again.",
+    "btn_tryagain": "حاول مجدداً",
+    "level_label": "Level {n} — {title}",
+    "xp_to_level": "{current} / {needed} XP to Level {next}",
+    "badge_3day": "3-day streak",
+    "badge_first": "First session",
+    "badge_10sessions": "10 sessions",
+    "badge_speed": "Speed run",
+    "badge_multi": "Multi-subject",
+    "badge_7day": "7-day streak",
+    "btn_done": "تم — العودة",
+    "results_stepbystep": "Step-by-step coaching",
+    "results_askyourchild": "Ask your child:",
+    "results_parenttip": "Parent tip:",
+    "results_ifstuck": "If they're stuck:",
+    "results_wrapup": "Session wrap-up",
+    "cheat_30sec": "The concept in 30 seconds",
+    "cheat_worked": "Worked example",
+    "cheat_mistakes": "Watch out for these mistakes",
+    "cheat_vocab": "Vocabulary",
+    "progress_sessions": "Sessions",
+    "progress_problems": "Problems",
+    "progress_subjects": "Subjects",
+    "progress_bysubject": "By subject",
+    "progress_recentsessions": "Recent sessions",
+    "progress_childname": "تقدم {name}"
+  },
+  "ko": {
+    "splash_title": "HintStep",
+    "splash_tagline": "자신감을 가지고 아이의 숙제를 도와주세요.",
+    "splash_getstarted": "시작",
+    "splash_motto": "Hints, not answers. Steps, not shortcuts.",
+    "login_title": "환영합니다",
+    "login_subtitle": "Sign in to continue coaching",
+    "label_email": "이메일",
+    "label_password": "비밀번호",
+    "btn_signin": "로그인",
+    "login_noaccount": "Don't have an account?",
+    "login_signup": "Sign up free",
+    "reg_title": "Create your account",
+    "reg_subtitle": "Start coaching in under a minute",
+    "label_name": "Your name",
+    "btn_createaccount": "Create account",
+    "reg_hasaccount": "Already have an account?",
+    "addchild_title": "Add your child",
+    "addchild_subtitle": "Tell us about your child so we can personalize the coaching experience.",
+    "label_childname": "Child's first name",
+    "label_grade": "Grade level",
+    "grade_select": "Select grade",
+    "grade_k": "Kindergarten",
+    "grade_1": "1st Grade",
+    "grade_2": "2nd Grade",
+    "grade_3": "3rd Grade",
+    "grade_4": "4th Grade",
+    "grade_5": "5th Grade",
+    "grade_6": "6th Grade",
+    "grade_7": "7th Grade",
+    "grade_8": "8th Grade",
+    "grade_9": "9th Grade",
+    "grade_10": "10th Grade",
+    "grade_11": "11th Grade",
+    "grade_12": "12th Grade",
+    "btn_addchild": "Add child",
+    "btn_skip": "Skip for now",
+    "selectchild_title": "Who are we helping tonight?",
+    "nav_home": "홈",
+    "nav_scan": "스캔",
+    "nav_hints": "힌트",
+    "nav_progress": "진행",
+    "home_daystreak": "day streak",
+    "home_totalxp": "total XP",
+    "home_dailychallenge": "Daily challenge",
+    "home_bonusxp": "+50 bonus XP",
+    "home_snap": "Snap the assignment",
+    "home_xppersession": "+25 XP per session",
+    "home_dailyinspiration": "Daily inspiration",
+    "home_badgesearned": "Badges earned",
+    "home_recentsessions": "Recent sessions",
+    "home_viewall": "View all",
+    "home_ready": "Ready to help tonight?",
+    "home_helping": "Helping {name} tonight",
+    "home_greeting_morning": "Good morning",
+    "home_greeting_afternoon": "Good afternoon",
+    "home_greeting_evening": "Good evening",
+    "home_hey": "Hey {name},",
+    "home_nosessions": "No sessions yet — snap your first assignment to get started",
+    "home_challenge_first": "Complete your first session today",
+    "home_challenge_second": "Complete a second session today",
+    "home_challenge_more": "{n} sessions done — keep going",
+    "camera_title": "Capture assignment",
+    "camera_tap": "Tap to upload a homework photo",
+    "camera_analyze": "Analyze assignment",
+    "camera_tips": "Tips: Full page visible, good lighting, keep it flat.",
+    "scan_analyzing": "Analyzing assignment...",
+    "scan_sending": "Sending to AI for analysis",
+    "scan_reading": "Reading the problems...",
+    "scan_identifying": "Identifying subject and grade level",
+    "scan_building": "Building your coaching guide...",
+    "scan_creating": "Creating guiding questions",
+    "scan_almost": "Almost there...",
+    "scan_polishing": "Polishing your cheat sheet",
+    "results_title": "Coaching guide",
+    "results_cheatsheet": "Cheat sheet",
+    "cheat_title": "Parent cheat sheet",
+    "cheat_empty": "Scan an assignment first to see your cheat sheet here.",
+    "progress_title": "Progress",
+    "progress_empty": "Complete a few sessions to see progress here.",
+    "settings_title": "설정",
+    "settings_language": "언어",
+    "settings_children": "Your children",
+    "settings_addchild": "+ Add another child",
+    "btn_signout": "로그아웃",
+    "error_oops": "Oops",
+    "error_title": "Something went wrong",
+    "error_msg": "Please try again.",
+    "btn_tryagain": "Try again",
+    "level_label": "Level {n} — {title}",
+    "xp_to_level": "{current} / {needed} XP to Level {next}",
+    "badge_3day": "3-day streak",
+    "badge_first": "First session",
+    "badge_10sessions": "10 sessions",
+    "badge_speed": "Speed run",
+    "badge_multi": "Multi-subject",
+    "badge_7day": "7-day streak",
+    "btn_done": "완료 — 홈으로",
+    "results_stepbystep": "Step-by-step coaching",
+    "results_askyourchild": "Ask your child:",
+    "results_parenttip": "Parent tip:",
+    "results_ifstuck": "If they're stuck:",
+    "results_wrapup": "Session wrap-up",
+    "cheat_30sec": "The concept in 30 seconds",
+    "cheat_worked": "Worked example",
+    "cheat_mistakes": "Watch out for these mistakes",
+    "cheat_vocab": "Vocabulary",
+    "progress_sessions": "Sessions",
+    "progress_problems": "Problems",
+    "progress_subjects": "Subjects",
+    "progress_bysubject": "By subject",
+    "progress_recentsessions": "Recent sessions",
+    "progress_childname": "{name}의 진행"
+  },
+  "tl": {
+    "splash_title": "HintStep",
+    "splash_tagline": "Gabayan ang iyong anak sa homework — walang sagot, tamang tanong lang.",
+    "splash_getstarted": "Magsimula",
+    "splash_motto": "Hints, not answers. Steps, not shortcuts.",
+    "login_title": "Maligayang pagbabalik",
+    "login_subtitle": "Sign in to continue coaching",
+    "label_email": "Email",
+    "label_password": "Password",
+    "btn_signin": "Mag-sign in",
+    "login_noaccount": "Don't have an account?",
+    "login_signup": "Sign up free",
+    "reg_title": "Create your account",
+    "reg_subtitle": "Start coaching in under a minute",
+    "label_name": "Your name",
+    "btn_createaccount": "Create account",
+    "reg_hasaccount": "Already have an account?",
+    "addchild_title": "Add your child",
+    "addchild_subtitle": "Tell us about your child so we can personalize the coaching experience.",
+    "label_childname": "Child's first name",
+    "label_grade": "Grade level",
+    "grade_select": "Select grade",
+    "grade_k": "Kindergarten",
+    "grade_1": "1st Grade",
+    "grade_2": "2nd Grade",
+    "grade_3": "3rd Grade",
+    "grade_4": "4th Grade",
+    "grade_5": "5th Grade",
+    "grade_6": "6th Grade",
+    "grade_7": "7th Grade",
+    "grade_8": "8th Grade",
+    "grade_9": "9th Grade",
+    "grade_10": "10th Grade",
+    "grade_11": "11th Grade",
+    "grade_12": "12th Grade",
+    "btn_addchild": "Add child",
+    "btn_skip": "Skip for now",
+    "selectchild_title": "Who are we helping tonight?",
+    "nav_home": "Home",
+    "nav_scan": "Scan",
+    "nav_hints": "Pahiwatig",
+    "nav_progress": "Progreso",
+    "home_daystreak": "day streak",
+    "home_totalxp": "total XP",
+    "home_dailychallenge": "Daily challenge",
+    "home_bonusxp": "+50 bonus XP",
+    "home_snap": "Snap the assignment",
+    "home_xppersession": "+25 XP per session",
+    "home_dailyinspiration": "Daily inspiration",
+    "home_badgesearned": "Badges earned",
+    "home_recentsessions": "Recent sessions",
+    "home_viewall": "View all",
+    "home_ready": "Ready to help tonight?",
+    "home_helping": "Helping {name} tonight",
+    "home_greeting_morning": "Good morning",
+    "home_greeting_afternoon": "Good afternoon",
+    "home_greeting_evening": "Good evening",
+    "home_hey": "Hey {name},",
+    "home_nosessions": "No sessions yet — snap your first assignment to get started",
+    "home_challenge_first": "Complete your first session today",
+    "home_challenge_second": "Complete a second session today",
+    "home_challenge_more": "{n} sessions done — keep going",
+    "camera_title": "Capture assignment",
+    "camera_tap": "Tap to upload a homework photo",
+    "camera_analyze": "Analyze assignment",
+    "camera_tips": "Tips: Full page visible, good lighting, keep it flat.",
+    "scan_analyzing": "Analyzing assignment...",
+    "scan_sending": "Sending to AI for analysis",
+    "scan_reading": "Reading the problems...",
+    "scan_identifying": "Identifying subject and grade level",
+    "scan_building": "Building your coaching guide...",
+    "scan_creating": "Creating guiding questions",
+    "scan_almost": "Almost there...",
+    "scan_polishing": "Polishing your cheat sheet",
+    "results_title": "Coaching guide",
+    "results_cheatsheet": "Cheat sheet",
+    "cheat_title": "Parent cheat sheet",
+    "cheat_empty": "Scan an assignment first to see your cheat sheet here.",
+    "progress_title": "Progress",
+    "progress_empty": "Complete a few sessions to see progress here.",
+    "settings_title": "Settings",
+    "settings_language": "Wika",
+    "settings_children": "Your children",
+    "settings_addchild": "+ Add another child",
+    "btn_signout": "Mag-sign out",
+    "error_oops": "Oops",
+    "error_title": "Something went wrong",
+    "error_msg": "Please try again.",
+    "btn_tryagain": "Try again",
+    "level_label": "Level {n} — {title}",
+    "xp_to_level": "{current} / {needed} XP to Level {next}",
+    "badge_3day": "3-day streak",
+    "badge_first": "First session",
+    "badge_10sessions": "10 sessions",
+    "badge_speed": "Speed run",
+    "badge_multi": "Multi-subject",
+    "badge_7day": "7-day streak",
+    "btn_done": "Tapos — balik sa home",
+    "results_stepbystep": "Step-by-step coaching",
+    "results_askyourchild": "Ask your child:",
+    "results_parenttip": "Parent tip:",
+    "results_ifstuck": "If they're stuck:",
+    "results_wrapup": "Session wrap-up",
+    "cheat_30sec": "The concept in 30 seconds",
+    "cheat_worked": "Worked example",
+    "cheat_mistakes": "Watch out for these mistakes",
+    "cheat_vocab": "Vocabulary",
+    "progress_sessions": "Sessions",
+    "progress_problems": "Problems",
+    "progress_subjects": "Subjects",
+    "progress_bysubject": "By subject",
+    "progress_recentsessions": "Recent sessions",
+    "progress_childname": "Progreso ni {name}"
+  },
+  "fr": {
+    "splash_title": "HintStep",
+    "splash_tagline": "Guidez votre enfant avec confiance — pas de réponses, juste les bonnes questions.",
+    "splash_getstarted": "Commencer",
+    "splash_motto": "Hints, not answers. Steps, not shortcuts.",
+    "login_title": "Bon retour",
+    "login_subtitle": "Connectez-vous",
+    "label_email": "E-mail",
+    "label_password": "Mot de passe",
+    "btn_signin": "Se connecter",
+    "login_noaccount": "Pas de compte ?",
+    "login_signup": "Inscription gratuite",
+    "reg_title": "Créez votre compte",
+    "reg_subtitle": "Start coaching in under a minute",
+    "label_name": "Votre nom",
+    "btn_createaccount": "Créer",
+    "reg_hasaccount": "Already have an account?",
+    "addchild_title": "Ajoutez votre enfant",
+    "addchild_subtitle": "Tell us about your child so we can personalize the coaching experience.",
+    "label_childname": "Prénom de l'enfant",
+    "label_grade": "Niveau",
+    "grade_select": "Select grade",
+    "grade_k": "Maternelle",
+    "grade_1": "CP",
+    "grade_2": "CE1",
+    "grade_3": "CE2",
+    "grade_4": "CM1",
+    "grade_5": "CM2",
+    "grade_6": "6ème",
+    "grade_7": "5ème",
+    "grade_8": "4ème",
+    "grade_9": "3ème",
+    "grade_10": "2nde",
+    "grade_11": "1ère",
+    "grade_12": "Terminale",
+    "btn_addchild": "Add child",
+    "btn_skip": "Skip for now",
+    "selectchild_title": "Who are we helping tonight?",
+    "nav_home": "Accueil",
+    "nav_scan": "Scanner",
+    "nav_hints": "Indices",
+    "nav_progress": "Progrès",
+    "home_daystreak": "day streak",
+    "home_totalxp": "total XP",
+    "home_dailychallenge": "Daily challenge",
+    "home_bonusxp": "+50 bonus XP",
+    "home_snap": "Snap the assignment",
+    "home_xppersession": "+25 XP per session",
+    "home_dailyinspiration": "Daily inspiration",
+    "home_badgesearned": "Badges earned",
+    "home_recentsessions": "Recent sessions",
+    "home_viewall": "View all",
+    "home_ready": "Prêt à aider ce soir ?",
+    "home_helping": "Aide {name} ce soir",
+    "home_greeting_morning": "Good morning",
+    "home_greeting_afternoon": "Good afternoon",
+    "home_greeting_evening": "Good evening",
+    "home_hey": "Hey {name},",
+    "home_nosessions": "No sessions yet — snap your first assignment to get started",
+    "home_challenge_first": "Complete your first session today",
+    "home_challenge_second": "Complete a second session today",
+    "home_challenge_more": "{n} sessions done — keep going",
+    "camera_title": "Capture assignment",
+    "camera_tap": "Tap to upload a homework photo",
+    "camera_analyze": "Analyze assignment",
+    "camera_tips": "Tips: Full page visible, good lighting, keep it flat.",
+    "scan_analyzing": "Analyzing assignment...",
+    "scan_sending": "Sending to AI for analysis",
+    "scan_reading": "Reading the problems...",
+    "scan_identifying": "Identifying subject and grade level",
+    "scan_building": "Building your coaching guide...",
+    "scan_creating": "Creating guiding questions",
+    "scan_almost": "Almost there...",
+    "scan_polishing": "Polishing your cheat sheet",
+    "results_title": "Coaching guide",
+    "results_cheatsheet": "Cheat sheet",
+    "cheat_title": "Parent cheat sheet",
+    "cheat_empty": "Scan an assignment first to see your cheat sheet here.",
+    "progress_title": "Progress",
+    "progress_empty": "Complete a few sessions to see progress here.",
+    "settings_title": "Paramètres",
+    "settings_language": "Langue",
+    "settings_children": "Your children",
+    "settings_addchild": "+ Add another child",
+    "btn_signout": "Déconnexion",
+    "error_oops": "Oops",
+    "error_title": "Something went wrong",
+    "error_msg": "Please try again.",
+    "btn_tryagain": "Try again",
+    "level_label": "Level {n} — {title}",
+    "xp_to_level": "{current} / {needed} XP to Level {next}",
+    "badge_3day": "3-day streak",
+    "badge_first": "First session",
+    "badge_10sessions": "10 sessions",
+    "badge_speed": "Speed run",
+    "badge_multi": "Multi-subject",
+    "badge_7day": "7-day streak",
+    "btn_done": "Terminé — retour",
+    "results_stepbystep": "Step-by-step coaching",
+    "results_askyourchild": "Ask your child:",
+    "results_parenttip": "Parent tip:",
+    "results_ifstuck": "If they're stuck:",
+    "results_wrapup": "Session wrap-up",
+    "cheat_30sec": "The concept in 30 seconds",
+    "cheat_worked": "Worked example",
+    "cheat_mistakes": "Watch out for these mistakes",
+    "cheat_vocab": "Vocabulary",
+    "progress_sessions": "Sessions",
+    "progress_problems": "Problems",
+    "progress_subjects": "Subjects",
+    "progress_bysubject": "By subject",
+    "progress_recentsessions": "Recent sessions",
+    "progress_childname": "Progrès de {name}"
+  },
+  "pt": {
+    "splash_title": "HintStep",
+    "splash_tagline": "Guie seu filho na lição com confiança — sem respostas, só perguntas certas.",
+    "splash_getstarted": "Começar",
+    "splash_motto": "Hints, not answers. Steps, not shortcuts.",
+    "login_title": "Bem-vindo",
+    "login_subtitle": "Sign in to continue coaching",
+    "label_email": "E-mail",
+    "label_password": "Senha",
+    "btn_signin": "Entrar",
+    "login_noaccount": "Don't have an account?",
+    "login_signup": "Sign up free",
+    "reg_title": "Create your account",
+    "reg_subtitle": "Start coaching in under a minute",
+    "label_name": "Your name",
+    "btn_createaccount": "Create account",
+    "reg_hasaccount": "Already have an account?",
+    "addchild_title": "Add your child",
+    "addchild_subtitle": "Tell us about your child so we can personalize the coaching experience.",
+    "label_childname": "Child's first name",
+    "label_grade": "Grade level",
+    "grade_select": "Select grade",
+    "grade_k": "Kindergarten",
+    "grade_1": "1st Grade",
+    "grade_2": "2nd Grade",
+    "grade_3": "3rd Grade",
+    "grade_4": "4th Grade",
+    "grade_5": "5th Grade",
+    "grade_6": "6th Grade",
+    "grade_7": "7th Grade",
+    "grade_8": "8th Grade",
+    "grade_9": "9th Grade",
+    "grade_10": "10th Grade",
+    "grade_11": "11th Grade",
+    "grade_12": "12th Grade",
+    "btn_addchild": "Add child",
+    "btn_skip": "Skip for now",
+    "selectchild_title": "Who are we helping tonight?",
+    "nav_home": "Início",
+    "nav_scan": "Escanear",
+    "nav_hints": "Dicas",
+    "nav_progress": "Progresso",
+    "home_daystreak": "day streak",
+    "home_totalxp": "total XP",
+    "home_dailychallenge": "Daily challenge",
+    "home_bonusxp": "+50 bonus XP",
+    "home_snap": "Snap the assignment",
+    "home_xppersession": "+25 XP per session",
+    "home_dailyinspiration": "Daily inspiration",
+    "home_badgesearned": "Badges earned",
+    "home_recentsessions": "Recent sessions",
+    "home_viewall": "View all",
+    "home_ready": "Ready to help tonight?",
+    "home_helping": "Helping {name} tonight",
+    "home_greeting_morning": "Good morning",
+    "home_greeting_afternoon": "Good afternoon",
+    "home_greeting_evening": "Good evening",
+    "home_hey": "Hey {name},",
+    "home_nosessions": "No sessions yet — snap your first assignment to get started",
+    "home_challenge_first": "Complete your first session today",
+    "home_challenge_second": "Complete a second session today",
+    "home_challenge_more": "{n} sessions done — keep going",
+    "camera_title": "Capture assignment",
+    "camera_tap": "Tap to upload a homework photo",
+    "camera_analyze": "Analyze assignment",
+    "camera_tips": "Tips: Full page visible, good lighting, keep it flat.",
+    "scan_analyzing": "Analyzing assignment...",
+    "scan_sending": "Sending to AI for analysis",
+    "scan_reading": "Reading the problems...",
+    "scan_identifying": "Identifying subject and grade level",
+    "scan_building": "Building your coaching guide...",
+    "scan_creating": "Creating guiding questions",
+    "scan_almost": "Almost there...",
+    "scan_polishing": "Polishing your cheat sheet",
+    "results_title": "Coaching guide",
+    "results_cheatsheet": "Cheat sheet",
+    "cheat_title": "Parent cheat sheet",
+    "cheat_empty": "Scan an assignment first to see your cheat sheet here.",
+    "progress_title": "Progress",
+    "progress_empty": "Complete a few sessions to see progress here.",
+    "settings_title": "Configurações",
+    "settings_language": "Idioma",
+    "settings_children": "Your children",
+    "settings_addchild": "+ Add another child",
+    "btn_signout": "Sair",
+    "error_oops": "Oops",
+    "error_title": "Something went wrong",
+    "error_msg": "Please try again.",
+    "btn_tryagain": "Try again",
+    "level_label": "Level {n} — {title}",
+    "xp_to_level": "{current} / {needed} XP to Level {next}",
+    "badge_3day": "3-day streak",
+    "badge_first": "First session",
+    "badge_10sessions": "10 sessions",
+    "badge_speed": "Speed run",
+    "badge_multi": "Multi-subject",
+    "badge_7day": "7-day streak",
+    "btn_done": "Pronto — voltar",
+    "results_stepbystep": "Step-by-step coaching",
+    "results_askyourchild": "Ask your child:",
+    "results_parenttip": "Parent tip:",
+    "results_ifstuck": "If they're stuck:",
+    "results_wrapup": "Session wrap-up",
+    "cheat_30sec": "The concept in 30 seconds",
+    "cheat_worked": "Worked example",
+    "cheat_mistakes": "Watch out for these mistakes",
+    "cheat_vocab": "Vocabulary",
+    "progress_sessions": "Sessions",
+    "progress_problems": "Problems",
+    "progress_subjects": "Subjects",
+    "progress_bysubject": "By subject",
+    "progress_recentsessions": "Recent sessions",
+    "progress_childname": "Progresso de {name}"
+  },
+  "ht": {
+    "splash_title": "HintStep",
+    "splash_tagline": "Gide pitit ou nan devwa ak konfyans — pa bay repons, jis bon kesyon.",
+    "splash_getstarted": "Kòmanse",
+    "splash_motto": "Hints, not answers. Steps, not shortcuts.",
+    "login_title": "Byenveni ankò",
+    "login_subtitle": "Sign in to continue coaching",
+    "label_email": "Email",
+    "label_password": "Password",
+    "btn_signin": "Konekte",
+    "login_noaccount": "Don't have an account?",
+    "login_signup": "Sign up free",
+    "reg_title": "Create your account",
+    "reg_subtitle": "Start coaching in under a minute",
+    "label_name": "Your name",
+    "btn_createaccount": "Create account",
+    "reg_hasaccount": "Already have an account?",
+    "addchild_title": "Add your child",
+    "addchild_subtitle": "Tell us about your child so we can personalize the coaching experience.",
+    "label_childname": "Child's first name",
+    "label_grade": "Grade level",
+    "grade_select": "Select grade",
+    "grade_k": "Kindergarten",
+    "grade_1": "1st Grade",
+    "grade_2": "2nd Grade",
+    "grade_3": "3rd Grade",
+    "grade_4": "4th Grade",
+    "grade_5": "5th Grade",
+    "grade_6": "6th Grade",
+    "grade_7": "7th Grade",
+    "grade_8": "8th Grade",
+    "grade_9": "9th Grade",
+    "grade_10": "10th Grade",
+    "grade_11": "11th Grade",
+    "grade_12": "12th Grade",
+    "btn_addchild": "Add child",
+    "btn_skip": "Skip for now",
+    "selectchild_title": "Who are we helping tonight?",
+    "nav_home": "Akèy",
+    "nav_scan": "Eskane",
+    "nav_hints": "Endis",
+    "nav_progress": "Pwogrè",
+    "home_daystreak": "day streak",
+    "home_totalxp": "total XP",
+    "home_dailychallenge": "Daily challenge",
+    "home_bonusxp": "+50 bonus XP",
+    "home_snap": "Snap the assignment",
+    "home_xppersession": "+25 XP per session",
+    "home_dailyinspiration": "Daily inspiration",
+    "home_badgesearned": "Badges earned",
+    "home_recentsessions": "Recent sessions",
+    "home_viewall": "View all",
+    "home_ready": "Ready to help tonight?",
+    "home_helping": "Helping {name} tonight",
+    "home_greeting_morning": "Good morning",
+    "home_greeting_afternoon": "Good afternoon",
+    "home_greeting_evening": "Good evening",
+    "home_hey": "Hey {name},",
+    "home_nosessions": "No sessions yet — snap your first assignment to get started",
+    "home_challenge_first": "Complete your first session today",
+    "home_challenge_second": "Complete a second session today",
+    "home_challenge_more": "{n} sessions done — keep going",
+    "camera_title": "Capture assignment",
+    "camera_tap": "Tap to upload a homework photo",
+    "camera_analyze": "Analyze assignment",
+    "camera_tips": "Tips: Full page visible, good lighting, keep it flat.",
+    "scan_analyzing": "Analyzing assignment...",
+    "scan_sending": "Sending to AI for analysis",
+    "scan_reading": "Reading the problems...",
+    "scan_identifying": "Identifying subject and grade level",
+    "scan_building": "Building your coaching guide...",
+    "scan_creating": "Creating guiding questions",
+    "scan_almost": "Almost there...",
+    "scan_polishing": "Polishing your cheat sheet",
+    "results_title": "Coaching guide",
+    "results_cheatsheet": "Cheat sheet",
+    "cheat_title": "Parent cheat sheet",
+    "cheat_empty": "Scan an assignment first to see your cheat sheet here.",
+    "progress_title": "Progress",
+    "progress_empty": "Complete a few sessions to see progress here.",
+    "settings_title": "Paramèt",
+    "settings_language": "Lang",
+    "settings_children": "Your children",
+    "settings_addchild": "+ Add another child",
+    "btn_signout": "Dekonekte",
+    "error_oops": "Oops",
+    "error_title": "Something went wrong",
+    "error_msg": "Please try again.",
+    "btn_tryagain": "Try again",
+    "level_label": "Level {n} — {title}",
+    "xp_to_level": "{current} / {needed} XP to Level {next}",
+    "badge_3day": "3-day streak",
+    "badge_first": "First session",
+    "badge_10sessions": "10 sessions",
+    "badge_speed": "Speed run",
+    "badge_multi": "Multi-subject",
+    "badge_7day": "7-day streak",
+    "btn_done": "Fini — retounen",
+    "results_stepbystep": "Step-by-step coaching",
+    "results_askyourchild": "Ask your child:",
+    "results_parenttip": "Parent tip:",
+    "results_ifstuck": "If they're stuck:",
+    "results_wrapup": "Session wrap-up",
+    "cheat_30sec": "The concept in 30 seconds",
+    "cheat_worked": "Worked example",
+    "cheat_mistakes": "Watch out for these mistakes",
+    "cheat_vocab": "Vocabulary",
+    "progress_sessions": "Sessions",
+    "progress_problems": "Problems",
+    "progress_subjects": "Subjects",
+    "progress_bysubject": "By subject",
+    "progress_recentsessions": "Recent sessions",
+    "progress_childname": "Pwogrè {name}"
+  },
+  "ru": {
+    "splash_title": "HintStep",
+    "splash_tagline": "Помогите ребёнку с домашним заданием — не ответы, а правильные вопросы.",
+    "splash_getstarted": "Начать",
+    "splash_motto": "Hints, not answers. Steps, not shortcuts.",
+    "login_title": "С возвращением",
+    "login_subtitle": "Sign in to continue coaching",
+    "label_email": "Эл. почта",
+    "label_password": "Пароль",
+    "btn_signin": "Войти",
+    "login_noaccount": "Don't have an account?",
+    "login_signup": "Sign up free",
+    "reg_title": "Create your account",
+    "reg_subtitle": "Start coaching in under a minute",
+    "label_name": "Your name",
+    "btn_createaccount": "Create account",
+    "reg_hasaccount": "Already have an account?",
+    "addchild_title": "Add your child",
+    "addchild_subtitle": "Tell us about your child so we can personalize the coaching experience.",
+    "label_childname": "Child's first name",
+    "label_grade": "Grade level",
+    "grade_select": "Select grade",
+    "grade_k": "Kindergarten",
+    "grade_1": "1st Grade",
+    "grade_2": "2nd Grade",
+    "grade_3": "3rd Grade",
+    "grade_4": "4th Grade",
+    "grade_5": "5th Grade",
+    "grade_6": "6th Grade",
+    "grade_7": "7th Grade",
+    "grade_8": "8th Grade",
+    "grade_9": "9th Grade",
+    "grade_10": "10th Grade",
+    "grade_11": "11th Grade",
+    "grade_12": "12th Grade",
+    "btn_addchild": "Add child",
+    "btn_skip": "Skip for now",
+    "selectchild_title": "Who are we helping tonight?",
+    "nav_home": "Главная",
+    "nav_scan": "Скан",
+    "nav_hints": "Подсказки",
+    "nav_progress": "Прогресс",
+    "home_daystreak": "day streak",
+    "home_totalxp": "total XP",
+    "home_dailychallenge": "Daily challenge",
+    "home_bonusxp": "+50 bonus XP",
+    "home_snap": "Snap the assignment",
+    "home_xppersession": "+25 XP per session",
+    "home_dailyinspiration": "Daily inspiration",
+    "home_badgesearned": "Badges earned",
+    "home_recentsessions": "Recent sessions",
+    "home_viewall": "View all",
+    "home_ready": "Ready to help tonight?",
+    "home_helping": "Helping {name} tonight",
+    "home_greeting_morning": "Good morning",
+    "home_greeting_afternoon": "Good afternoon",
+    "home_greeting_evening": "Good evening",
+    "home_hey": "Hey {name},",
+    "home_nosessions": "No sessions yet — snap your first assignment to get started",
+    "home_challenge_first": "Complete your first session today",
+    "home_challenge_second": "Complete a second session today",
+    "home_challenge_more": "{n} sessions done — keep going",
+    "camera_title": "Capture assignment",
+    "camera_tap": "Tap to upload a homework photo",
+    "camera_analyze": "Analyze assignment",
+    "camera_tips": "Tips: Full page visible, good lighting, keep it flat.",
+    "scan_analyzing": "Analyzing assignment...",
+    "scan_sending": "Sending to AI for analysis",
+    "scan_reading": "Reading the problems...",
+    "scan_identifying": "Identifying subject and grade level",
+    "scan_building": "Building your coaching guide...",
+    "scan_creating": "Creating guiding questions",
+    "scan_almost": "Almost there...",
+    "scan_polishing": "Polishing your cheat sheet",
+    "results_title": "Coaching guide",
+    "results_cheatsheet": "Cheat sheet",
+    "cheat_title": "Parent cheat sheet",
+    "cheat_empty": "Scan an assignment first to see your cheat sheet here.",
+    "progress_title": "Progress",
+    "progress_empty": "Complete a few sessions to see progress here.",
+    "settings_title": "Настройки",
+    "settings_language": "Язык",
+    "settings_children": "Your children",
+    "settings_addchild": "+ Add another child",
+    "btn_signout": "Выйти",
+    "error_oops": "Oops",
+    "error_title": "Something went wrong",
+    "error_msg": "Please try again.",
+    "btn_tryagain": "Try again",
+    "level_label": "Level {n} — {title}",
+    "xp_to_level": "{current} / {needed} XP to Level {next}",
+    "badge_3day": "3-day streak",
+    "badge_first": "First session",
+    "badge_10sessions": "10 sessions",
+    "badge_speed": "Speed run",
+    "badge_multi": "Multi-subject",
+    "badge_7day": "7-day streak",
+    "btn_done": "Готово — на главную",
+    "results_stepbystep": "Step-by-step coaching",
+    "results_askyourchild": "Ask your child:",
+    "results_parenttip": "Parent tip:",
+    "results_ifstuck": "If they're stuck:",
+    "results_wrapup": "Session wrap-up",
+    "cheat_30sec": "The concept in 30 seconds",
+    "cheat_worked": "Worked example",
+    "cheat_mistakes": "Watch out for these mistakes",
+    "cheat_vocab": "Vocabulary",
+    "progress_sessions": "Sessions",
+    "progress_problems": "Problems",
+    "progress_subjects": "Subjects",
+    "progress_bysubject": "By subject",
+    "progress_recentsessions": "Recent sessions",
+    "progress_childname": "Прогресс {name}"
+  },
+  "hi": {
+    "splash_title": "HintStep",
+    "splash_tagline": "आत्मविश्वास से बच्चे को होमवर्क में मार्गदर्शन करें — जवाब नहीं, सही सवाल।",
+    "splash_getstarted": "शुरू करें",
+    "splash_motto": "Hints, not answers. Steps, not shortcuts.",
+    "login_title": "वापस स्वागत",
+    "login_subtitle": "Sign in to continue coaching",
+    "label_email": "ईमेल",
+    "label_password": "पासवर्ड",
+    "btn_signin": "लॉग इन",
+    "login_noaccount": "Don't have an account?",
+    "login_signup": "Sign up free",
+    "reg_title": "Create your account",
+    "reg_subtitle": "Start coaching in under a minute",
+    "label_name": "Your name",
+    "btn_createaccount": "Create account",
+    "reg_hasaccount": "Already have an account?",
+    "addchild_title": "Add your child",
+    "addchild_subtitle": "Tell us about your child so we can personalize the coaching experience.",
+    "label_childname": "Child's first name",
+    "label_grade": "Grade level",
+    "grade_select": "Select grade",
+    "grade_k": "Kindergarten",
+    "grade_1": "1st Grade",
+    "grade_2": "2nd Grade",
+    "grade_3": "3rd Grade",
+    "grade_4": "4th Grade",
+    "grade_5": "5th Grade",
+    "grade_6": "6th Grade",
+    "grade_7": "7th Grade",
+    "grade_8": "8th Grade",
+    "grade_9": "9th Grade",
+    "grade_10": "10th Grade",
+    "grade_11": "11th Grade",
+    "grade_12": "12th Grade",
+    "btn_addchild": "Add child",
+    "btn_skip": "Skip for now",
+    "selectchild_title": "Who are we helping tonight?",
+    "nav_home": "होम",
+    "nav_scan": "स्कैन",
+    "nav_hints": "संकेत",
+    "nav_progress": "प्रगति",
+    "home_daystreak": "day streak",
+    "home_totalxp": "total XP",
+    "home_dailychallenge": "Daily challenge",
+    "home_bonusxp": "+50 bonus XP",
+    "home_snap": "Snap the assignment",
+    "home_xppersession": "+25 XP per session",
+    "home_dailyinspiration": "Daily inspiration",
+    "home_badgesearned": "Badges earned",
+    "home_recentsessions": "Recent sessions",
+    "home_viewall": "View all",
+    "home_ready": "Ready to help tonight?",
+    "home_helping": "Helping {name} tonight",
+    "home_greeting_morning": "Good morning",
+    "home_greeting_afternoon": "Good afternoon",
+    "home_greeting_evening": "Good evening",
+    "home_hey": "Hey {name},",
+    "home_nosessions": "No sessions yet — snap your first assignment to get started",
+    "home_challenge_first": "Complete your first session today",
+    "home_challenge_second": "Complete a second session today",
+    "home_challenge_more": "{n} sessions done — keep going",
+    "camera_title": "Capture assignment",
+    "camera_tap": "Tap to upload a homework photo",
+    "camera_analyze": "Analyze assignment",
+    "camera_tips": "Tips: Full page visible, good lighting, keep it flat.",
+    "scan_analyzing": "Analyzing assignment...",
+    "scan_sending": "Sending to AI for analysis",
+    "scan_reading": "Reading the problems...",
+    "scan_identifying": "Identifying subject and grade level",
+    "scan_building": "Building your coaching guide...",
+    "scan_creating": "Creating guiding questions",
+    "scan_almost": "Almost there...",
+    "scan_polishing": "Polishing your cheat sheet",
+    "results_title": "Coaching guide",
+    "results_cheatsheet": "Cheat sheet",
+    "cheat_title": "Parent cheat sheet",
+    "cheat_empty": "Scan an assignment first to see your cheat sheet here.",
+    "progress_title": "Progress",
+    "progress_empty": "Complete a few sessions to see progress here.",
+    "settings_title": "सेटिंग्स",
+    "settings_language": "भाषा",
+    "settings_children": "Your children",
+    "settings_addchild": "+ Add another child",
+    "btn_signout": "लॉग आउट",
+    "error_oops": "Oops",
+    "error_title": "Something went wrong",
+    "error_msg": "Please try again.",
+    "btn_tryagain": "Try again",
+    "level_label": "Level {n} — {title}",
+    "xp_to_level": "{current} / {needed} XP to Level {next}",
+    "badge_3day": "3-day streak",
+    "badge_first": "First session",
+    "badge_10sessions": "10 sessions",
+    "badge_speed": "Speed run",
+    "badge_multi": "Multi-subject",
+    "badge_7day": "7-day streak",
+    "btn_done": "हो गया — होम पर",
+    "results_stepbystep": "Step-by-step coaching",
+    "results_askyourchild": "Ask your child:",
+    "results_parenttip": "Parent tip:",
+    "results_ifstuck": "If they're stuck:",
+    "results_wrapup": "Session wrap-up",
+    "cheat_30sec": "The concept in 30 seconds",
+    "cheat_worked": "Worked example",
+    "cheat_mistakes": "Watch out for these mistakes",
+    "cheat_vocab": "Vocabulary",
+    "progress_sessions": "Sessions",
+    "progress_problems": "Problems",
+    "progress_subjects": "Subjects",
+    "progress_bysubject": "By subject",
+    "progress_recentsessions": "Recent sessions",
+    "progress_childname": "{name} की प्रगति"
+  },
+  "ja": {
+    "splash_title": "HintStep",
+    "splash_tagline": "自信を持ってお子さんの宿題をサポート — 答えではなく正しい質問を。",
+    "splash_getstarted": "始める",
+    "splash_motto": "Hints, not answers. Steps, not shortcuts.",
+    "login_title": "おかえりなさい",
+    "login_subtitle": "Sign in to continue coaching",
+    "label_email": "メール",
+    "label_password": "パスワード",
+    "btn_signin": "ログイン",
+    "login_noaccount": "Don't have an account?",
+    "login_signup": "Sign up free",
+    "reg_title": "Create your account",
+    "reg_subtitle": "Start coaching in under a minute",
+    "label_name": "Your name",
+    "btn_createaccount": "Create account",
+    "reg_hasaccount": "Already have an account?",
+    "addchild_title": "Add your child",
+    "addchild_subtitle": "Tell us about your child so we can personalize the coaching experience.",
+    "label_childname": "Child's first name",
+    "label_grade": "Grade level",
+    "grade_select": "Select grade",
+    "grade_k": "Kindergarten",
+    "grade_1": "1st Grade",
+    "grade_2": "2nd Grade",
+    "grade_3": "3rd Grade",
+    "grade_4": "4th Grade",
+    "grade_5": "5th Grade",
+    "grade_6": "6th Grade",
+    "grade_7": "7th Grade",
+    "grade_8": "8th Grade",
+    "grade_9": "9th Grade",
+    "grade_10": "10th Grade",
+    "grade_11": "11th Grade",
+    "grade_12": "12th Grade",
+    "btn_addchild": "Add child",
+    "btn_skip": "Skip for now",
+    "selectchild_title": "Who are we helping tonight?",
+    "nav_home": "ホーム",
+    "nav_scan": "スキャン",
+    "nav_hints": "ヒント",
+    "nav_progress": "進捗",
+    "home_daystreak": "day streak",
+    "home_totalxp": "total XP",
+    "home_dailychallenge": "Daily challenge",
+    "home_bonusxp": "+50 bonus XP",
+    "home_snap": "Snap the assignment",
+    "home_xppersession": "+25 XP per session",
+    "home_dailyinspiration": "Daily inspiration",
+    "home_badgesearned": "Badges earned",
+    "home_recentsessions": "Recent sessions",
+    "home_viewall": "View all",
+    "home_ready": "Ready to help tonight?",
+    "home_helping": "Helping {name} tonight",
+    "home_greeting_morning": "Good morning",
+    "home_greeting_afternoon": "Good afternoon",
+    "home_greeting_evening": "Good evening",
+    "home_hey": "Hey {name},",
+    "home_nosessions": "No sessions yet — snap your first assignment to get started",
+    "home_challenge_first": "Complete your first session today",
+    "home_challenge_second": "Complete a second session today",
+    "home_challenge_more": "{n} sessions done — keep going",
+    "camera_title": "Capture assignment",
+    "camera_tap": "Tap to upload a homework photo",
+    "camera_analyze": "Analyze assignment",
+    "camera_tips": "Tips: Full page visible, good lighting, keep it flat.",
+    "scan_analyzing": "Analyzing assignment...",
+    "scan_sending": "Sending to AI for analysis",
+    "scan_reading": "Reading the problems...",
+    "scan_identifying": "Identifying subject and grade level",
+    "scan_building": "Building your coaching guide...",
+    "scan_creating": "Creating guiding questions",
+    "scan_almost": "Almost there...",
+    "scan_polishing": "Polishing your cheat sheet",
+    "results_title": "Coaching guide",
+    "results_cheatsheet": "Cheat sheet",
+    "cheat_title": "Parent cheat sheet",
+    "cheat_empty": "Scan an assignment first to see your cheat sheet here.",
+    "progress_title": "Progress",
+    "progress_empty": "Complete a few sessions to see progress here.",
+    "settings_title": "設定",
+    "settings_language": "言語",
+    "settings_children": "Your children",
+    "settings_addchild": "+ Add another child",
+    "btn_signout": "ログアウト",
+    "error_oops": "Oops",
+    "error_title": "Something went wrong",
+    "error_msg": "Please try again.",
+    "btn_tryagain": "Try again",
+    "level_label": "Level {n} — {title}",
+    "xp_to_level": "{current} / {needed} XP to Level {next}",
+    "badge_3day": "3-day streak",
+    "badge_first": "First session",
+    "badge_10sessions": "10 sessions",
+    "badge_speed": "Speed run",
+    "badge_multi": "Multi-subject",
+    "badge_7day": "7-day streak",
+    "btn_done": "完了 — ホームへ",
+    "results_stepbystep": "Step-by-step coaching",
+    "results_askyourchild": "Ask your child:",
+    "results_parenttip": "Parent tip:",
+    "results_ifstuck": "If they're stuck:",
+    "results_wrapup": "Session wrap-up",
+    "cheat_30sec": "The concept in 30 seconds",
+    "cheat_worked": "Worked example",
+    "cheat_mistakes": "Watch out for these mistakes",
+    "cheat_vocab": "Vocabulary",
+    "progress_sessions": "Sessions",
+    "progress_problems": "Problems",
+    "progress_subjects": "Subjects",
+    "progress_bysubject": "By subject",
+    "progress_recentsessions": "Recent sessions",
+    "progress_childname": "{name}の進捗"
+  },
+  "ur": {
+    "splash_title": "HintStep",
+    "splash_tagline": "اعتماد کے ساتھ بچے کی ہوم ورک میں رہنمائی کریں — جواب نہیں، صحیح سوالات۔",
+    "splash_getstarted": "شروع کریں",
+    "splash_motto": "Hints, not answers. Steps, not shortcuts.",
+    "login_title": "خوش آمدید",
+    "login_subtitle": "Sign in to continue coaching",
+    "label_email": "ایمیل",
+    "label_password": "پاس ورڈ",
+    "btn_signin": "لاگ ان",
+    "login_noaccount": "Don't have an account?",
+    "login_signup": "Sign up free",
+    "reg_title": "Create your account",
+    "reg_subtitle": "Start coaching in under a minute",
+    "label_name": "Your name",
+    "btn_createaccount": "Create account",
+    "reg_hasaccount": "Already have an account?",
+    "addchild_title": "Add your child",
+    "addchild_subtitle": "Tell us about your child so we can personalize the coaching experience.",
+    "label_childname": "Child's first name",
+    "label_grade": "Grade level",
+    "grade_select": "Select grade",
+    "grade_k": "Kindergarten",
+    "grade_1": "1st Grade",
+    "grade_2": "2nd Grade",
+    "grade_3": "3rd Grade",
+    "grade_4": "4th Grade",
+    "grade_5": "5th Grade",
+    "grade_6": "6th Grade",
+    "grade_7": "7th Grade",
+    "grade_8": "8th Grade",
+    "grade_9": "9th Grade",
+    "grade_10": "10th Grade",
+    "grade_11": "11th Grade",
+    "grade_12": "12th Grade",
+    "btn_addchild": "Add child",
+    "btn_skip": "Skip for now",
+    "selectchild_title": "Who are we helping tonight?",
+    "nav_home": "ہوم",
+    "nav_scan": "اسکین",
+    "nav_hints": "اشارے",
+    "nav_progress": "پیشرفت",
+    "home_daystreak": "day streak",
+    "home_totalxp": "total XP",
+    "home_dailychallenge": "Daily challenge",
+    "home_bonusxp": "+50 bonus XP",
+    "home_snap": "Snap the assignment",
+    "home_xppersession": "+25 XP per session",
+    "home_dailyinspiration": "Daily inspiration",
+    "home_badgesearned": "Badges earned",
+    "home_recentsessions": "Recent sessions",
+    "home_viewall": "View all",
+    "home_ready": "Ready to help tonight?",
+    "home_helping": "Helping {name} tonight",
+    "home_greeting_morning": "Good morning",
+    "home_greeting_afternoon": "Good afternoon",
+    "home_greeting_evening": "Good evening",
+    "home_hey": "Hey {name},",
+    "home_nosessions": "No sessions yet — snap your first assignment to get started",
+    "home_challenge_first": "Complete your first session today",
+    "home_challenge_second": "Complete a second session today",
+    "home_challenge_more": "{n} sessions done — keep going",
+    "camera_title": "Capture assignment",
+    "camera_tap": "Tap to upload a homework photo",
+    "camera_analyze": "Analyze assignment",
+    "camera_tips": "Tips: Full page visible, good lighting, keep it flat.",
+    "scan_analyzing": "Analyzing assignment...",
+    "scan_sending": "Sending to AI for analysis",
+    "scan_reading": "Reading the problems...",
+    "scan_identifying": "Identifying subject and grade level",
+    "scan_building": "Building your coaching guide...",
+    "scan_creating": "Creating guiding questions",
+    "scan_almost": "Almost there...",
+    "scan_polishing": "Polishing your cheat sheet",
+    "results_title": "Coaching guide",
+    "results_cheatsheet": "Cheat sheet",
+    "cheat_title": "Parent cheat sheet",
+    "cheat_empty": "Scan an assignment first to see your cheat sheet here.",
+    "progress_title": "Progress",
+    "progress_empty": "Complete a few sessions to see progress here.",
+    "settings_title": "ترتیبات",
+    "settings_language": "زبان",
+    "settings_children": "Your children",
+    "settings_addchild": "+ Add another child",
+    "btn_signout": "لاگ آؤٹ",
+    "error_oops": "Oops",
+    "error_title": "Something went wrong",
+    "error_msg": "Please try again.",
+    "btn_tryagain": "Try again",
+    "level_label": "Level {n} — {title}",
+    "xp_to_level": "{current} / {needed} XP to Level {next}",
+    "badge_3day": "3-day streak",
+    "badge_first": "First session",
+    "badge_10sessions": "10 sessions",
+    "badge_speed": "Speed run",
+    "badge_multi": "Multi-subject",
+    "badge_7day": "7-day streak",
+    "btn_done": "ہو گیا — ہوم واپس",
+    "results_stepbystep": "Step-by-step coaching",
+    "results_askyourchild": "Ask your child:",
+    "results_parenttip": "Parent tip:",
+    "results_ifstuck": "If they're stuck:",
+    "results_wrapup": "Session wrap-up",
+    "cheat_30sec": "The concept in 30 seconds",
+    "cheat_worked": "Worked example",
+    "cheat_mistakes": "Watch out for these mistakes",
+    "cheat_vocab": "Vocabulary",
+    "progress_sessions": "Sessions",
+    "progress_problems": "Problems",
+    "progress_subjects": "Subjects",
+    "progress_bysubject": "By subject",
+    "progress_recentsessions": "Recent sessions",
+    "progress_childname": "{name} کی پیشرفت"
+  },
+  "pl": {
+    "splash_title": "HintStep",
+    "splash_tagline": "Prowadź dziecko przez zadania z pewnością — bez odpowiedzi, tylko właściwe pytania.",
+    "splash_getstarted": "Rozpocznij",
+    "splash_motto": "Hints, not answers. Steps, not shortcuts.",
+    "login_title": "Witaj ponownie",
+    "login_subtitle": "Sign in to continue coaching",
+    "label_email": "E-mail",
+    "label_password": "Hasło",
+    "btn_signin": "Zaloguj",
+    "login_noaccount": "Don't have an account?",
+    "login_signup": "Sign up free",
+    "reg_title": "Create your account",
+    "reg_subtitle": "Start coaching in under a minute",
+    "label_name": "Your name",
+    "btn_createaccount": "Create account",
+    "reg_hasaccount": "Already have an account?",
+    "addchild_title": "Add your child",
+    "addchild_subtitle": "Tell us about your child so we can personalize the coaching experience.",
+    "label_childname": "Child's first name",
+    "label_grade": "Grade level",
+    "grade_select": "Select grade",
+    "grade_k": "Kindergarten",
+    "grade_1": "1st Grade",
+    "grade_2": "2nd Grade",
+    "grade_3": "3rd Grade",
+    "grade_4": "4th Grade",
+    "grade_5": "5th Grade",
+    "grade_6": "6th Grade",
+    "grade_7": "7th Grade",
+    "grade_8": "8th Grade",
+    "grade_9": "9th Grade",
+    "grade_10": "10th Grade",
+    "grade_11": "11th Grade",
+    "grade_12": "12th Grade",
+    "btn_addchild": "Add child",
+    "btn_skip": "Skip for now",
+    "selectchild_title": "Who are we helping tonight?",
+    "nav_home": "Główna",
+    "nav_scan": "Skanuj",
+    "nav_hints": "Wskazówki",
+    "nav_progress": "Postępy",
+    "home_daystreak": "day streak",
+    "home_totalxp": "total XP",
+    "home_dailychallenge": "Daily challenge",
+    "home_bonusxp": "+50 bonus XP",
+    "home_snap": "Snap the assignment",
+    "home_xppersession": "+25 XP per session",
+    "home_dailyinspiration": "Daily inspiration",
+    "home_badgesearned": "Badges earned",
+    "home_recentsessions": "Recent sessions",
+    "home_viewall": "View all",
+    "home_ready": "Ready to help tonight?",
+    "home_helping": "Helping {name} tonight",
+    "home_greeting_morning": "Good morning",
+    "home_greeting_afternoon": "Good afternoon",
+    "home_greeting_evening": "Good evening",
+    "home_hey": "Hey {name},",
+    "home_nosessions": "No sessions yet — snap your first assignment to get started",
+    "home_challenge_first": "Complete your first session today",
+    "home_challenge_second": "Complete a second session today",
+    "home_challenge_more": "{n} sessions done — keep going",
+    "camera_title": "Capture assignment",
+    "camera_tap": "Tap to upload a homework photo",
+    "camera_analyze": "Analyze assignment",
+    "camera_tips": "Tips: Full page visible, good lighting, keep it flat.",
+    "scan_analyzing": "Analyzing assignment...",
+    "scan_sending": "Sending to AI for analysis",
+    "scan_reading": "Reading the problems...",
+    "scan_identifying": "Identifying subject and grade level",
+    "scan_building": "Building your coaching guide...",
+    "scan_creating": "Creating guiding questions",
+    "scan_almost": "Almost there...",
+    "scan_polishing": "Polishing your cheat sheet",
+    "results_title": "Coaching guide",
+    "results_cheatsheet": "Cheat sheet",
+    "cheat_title": "Parent cheat sheet",
+    "cheat_empty": "Scan an assignment first to see your cheat sheet here.",
+    "progress_title": "Progress",
+    "progress_empty": "Complete a few sessions to see progress here.",
+    "settings_title": "Ustawienia",
+    "settings_language": "Język",
+    "settings_children": "Your children",
+    "settings_addchild": "+ Add another child",
+    "btn_signout": "Wyloguj",
+    "error_oops": "Oops",
+    "error_title": "Something went wrong",
+    "error_msg": "Please try again.",
+    "btn_tryagain": "Try again",
+    "level_label": "Level {n} — {title}",
+    "xp_to_level": "{current} / {needed} XP to Level {next}",
+    "badge_3day": "3-day streak",
+    "badge_first": "First session",
+    "badge_10sessions": "10 sessions",
+    "badge_speed": "Speed run",
+    "badge_multi": "Multi-subject",
+    "badge_7day": "7-day streak",
+    "btn_done": "Gotowe — wróć",
+    "results_stepbystep": "Step-by-step coaching",
+    "results_askyourchild": "Ask your child:",
+    "results_parenttip": "Parent tip:",
+    "results_ifstuck": "If they're stuck:",
+    "results_wrapup": "Session wrap-up",
+    "cheat_30sec": "The concept in 30 seconds",
+    "cheat_worked": "Worked example",
+    "cheat_mistakes": "Watch out for these mistakes",
+    "cheat_vocab": "Vocabulary",
+    "progress_sessions": "Sessions",
+    "progress_problems": "Problems",
+    "progress_subjects": "Subjects",
+    "progress_bysubject": "By subject",
+    "progress_recentsessions": "Recent sessions",
+    "progress_childname": "Postępy {name}"
+  }
+};
+
+function t(key, params) {
+  var lang = translations[currentLang] || translations.en;
+  var text = lang[key];
+  if (text === undefined) {
+    var fallback = translations.en[key];
+    if (fallback === undefined) return key;
+    text = fallback;
+  }
+  if (params) {
+    Object.keys(params).forEach(function(k) {
+      text = text.split('{' + k + '}').join(params[k]);
+    });
+  }
+  return text;
+}
+
+function applyTranslations() {
+  document.querySelectorAll('[data-i18n]').forEach(function(el) {
+    var key = el.getAttribute('data-i18n');
+    var translated = t(key);
+    if (translated \!== key) {
+      el.textContent = translated;
+    }
+  });
+  // RTL support for Arabic and Urdu
+  if (currentLang === 'ar' || currentLang === 'ur') {
+    document.body.setAttribute('dir', 'rtl');
+    document.documentElement.setAttribute('dir', 'rtl');
+  } else {
+    document.body.removeAttribute('dir');
+    document.documentElement.removeAttribute('dir');
+  }
+  // Update lang-select if visible
+  var langSel = document.getElementById('lang-select');
+  if (langSel) {
+    langSel.value = currentLang;
+  }
+}
+
+function changeLanguage(lang) {
+  currentLang = lang;
+  try { localStorage.setItem('hintstep_lang', lang); } catch(e) {}
+  applyTranslations();
+}
+
+// ==========================================
+// STATE
+// ==========================================
+let currentUser = null;
+let children = [];
+let activeChild = null;
+let sessions = [];
+let imageData = null;
+let imageType = 'image/jpeg';
+let lastResult = null;
+
+// ==========================================
+// INIT — Load config, check if user is logged in
+// ==========================================
+async function init() {
+  try {
+    const res = await fetch('/api/config');
+    const cfg = await res.json();
+    if (cfg.supabaseUrl && cfg.supabaseKey) {
+      sb = supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey);
+    }
+  } catch(e) {}
+  if (!sb) { go('splash'); return; }
+  const { data } = await sb.auth.getSession();
+  if (data.session) {
+    currentUser = data.session.user;
+    await loadChildren();
+    if (children.length === 0) {
+      go('addchild');
+    } else if (children.length === 1) {
+      activeChild = children[0];
+      await loadSessions();
+      go('home');
+    } else {
+      go('selectchild');
+    }
+  } else {
+    go('splash');
+  }
+}
+init();
+// Apply saved language on page load
+(function() {
+  var saved = localStorage.getItem('hintstep_lang');
+  if (saved) { currentLang = saved; }
+  applyTranslations();
+})();
+
+// ==========================================
+// AUTH
+// ==========================================
+async function handleRegister() {
+  const name = document.getElementById('reg-name').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const password = document.getElementById('reg-password').value;
+  const errEl = document.getElementById('reg-error');
+  errEl.style.display = 'none';
+
+  if (!name || !email || !password) {
+    errEl.textContent = 'Please fill in all fields.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (password.length < 6) {
+    errEl.textContent = 'Password must be at least 6 characters.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  document.getElementById('reg-btn').disabled = true;
+  const { data, error } = await sb.auth.signUp({
+    email,
+    password,
+    options: { data: { name } }
+  });
+
+  if (error) {
+    errEl.textContent = error.message;
+    errEl.style.display = 'block';
+    document.getElementById('reg-btn').disabled = false;
+    return;
+  }
+
+  currentUser = data.user;
+  document.getElementById('reg-btn').disabled = false;
+  go('addchild');
+}
+
+async function handleLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  errEl.style.display = 'none';
+
+  if (!email || !password) {
+    errEl.textContent = 'Please enter your email and password.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  document.getElementById('login-btn').disabled = true;
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+
+  if (error) {
+    errEl.textContent = error.message;
+    errEl.style.display = 'block';
+    document.getElementById('login-btn').disabled = false;
+    return;
+  }
+
+  currentUser = data.user;
+  document.getElementById('login-btn').disabled = false;
+  await loadChildren();
+
+  if (children.length === 0) {
+    go('addchild');
+  } else if (children.length === 1) {
+    activeChild = children[0];
+    await loadSessions();
+    go('home');
+  } else {
+    go('selectchild');
+  }
+}
+
+async function handleLogout() {
+  await sb.auth.signOut();
+  currentUser = null;
+  children = [];
+  activeChild = null;
+  sessions = [];
+  go('splash');
+}
+
+// ==========================================
+// CHILDREN
+// ==========================================
+async function loadChildren() {
+  const { data } = await sb.from('children').select('*').order('created_at');
+  children = data || [];
+}
+
+async function handleAddChild() {
+  const name = document.getElementById('child-name').value.trim();
+  const grade = document.getElementById('child-grade').value;
+  const errEl = document.getElementById('child-error');
+  errEl.style.display = 'none';
+
+  if (!name || !grade) {
+    errEl.textContent = 'Please enter a name and select a grade.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const { data, error } = await sb.from('children').insert({
+    user_id: currentUser.id,
+    name,
+    grade_level: grade
+  }).select().single();
+
+  if (error) {
+    errEl.textContent = error.message;
+    errEl.style.display = 'block';
+    return;
+  }
+
+  children.push(data);
+  activeChild = data;
+  document.getElementById('child-name').value = '';
+  document.getElementById('child-grade').value = '';
+  await loadSessions();
+  go('home');
+}
+
+function renderChildSelector() {
+  const container = document.getElementById('child-list-body');
+  let html = '';
+  const colors = ['var(--pri)','var(--acc)','var(--blue)','#D85A30','#534AB7'];
+
+  children.forEach((child, i) => {
+    const color = colors[i % colors.length];
+    const initial = child.name.charAt(0).toUpperCase();
+    const selected = activeChild && activeChild.id === child.id;
+    html += `
+      <div class="child-card ${selected ? 'selected' : ''}" onclick="selectChild('${child.id}')">
+        <div class="child-avatar" style="background:${selected ? 'var(--pri)' : 'var(--pri-light)'};color:${selected ? '#fff' : 'var(--pri)'}">${initial}</div>
+        <div style="flex:1">
+          <p style="font-size:16px;font-weight:600">${esc(child.name)}</p>
+          <p style="font-size:13px;color:var(--text2)">Grade ${esc(child.grade_level)}</p>
+        </div>
+      </div>`;
+  });
+
+  html += `
+    <div class="child-card" onclick="go('addchild')" style="justify-content:center;border-style:dashed">
+      <p style="font-size:15px;color:var(--pri);font-weight:600">+ Add another child</p>
+    </div>`;
+
+  container.innerHTML = html;
+}
+
+async function selectChild(id) {
+  activeChild = children.find(c => c.id === id);
+  await loadSessions();
+  go('home');
+}
+
+// ==========================================
+// SESSIONS
+// ==========================================
+async function loadSessions() {
+  if (!activeChild) return;
+  const { data } = await sb.from('sessions')
+    .select('*')
+    .eq('child_id', activeChild.id)
+    .order('created_at', { ascending: false })
+    .limit(20);
+  sessions = data || [];
+  renderRecentSessions();
+}
+
+async function saveSession(result) {
+  if (!activeChild || !sb) return;
+  const a = result.analysis;
+  await sb.from('sessions').insert({
+    user_id: currentUser.id,
+    child_id: activeChild.id,
+    subject: a.subject,
+    topic: a.topic,
+    grade_level: a.grade_level,
+    problem_count: a.problem_count,
+    estimated_time: a.estimated_time_minutes,
+    result_json: result
+  });
+  await loadSessions();
+}
+
+function renderRecentSessions() {
+  const container = document.getElementById('recent-sessions');
+  if (!sessions.length) {
+    container.innerHTML = '<p style="font-size:14px;color:var(--text3);text-align:center;padding:24px 0">No sessions yet — snap your first assignment!</p>';
+    return;
+  }
+
+  const iconMap = { Math: { bg:'var(--pri-light)', color:'var(--pri)', label:'fx' },
+    ELA: { bg:'var(--acc-light)', color:'var(--acc-dark)', label:'Aa' },
+    Science: { bg:'var(--blue-light)', color:'var(--blue-dark)', label:'H₂O' },
+    'Social Studies': { bg:'#FAECE7', color:'#993C1D', label:'US' } };
+
+  let html = '';
+  sessions.slice(0, 5).forEach(s => {
+    const icon = iconMap[s.subject] || iconMap.Math;
+    const date = new Date(s.created_at);
+    const dateStr = formatDate(date);
+    html += `
+      <div class="recent-item" onclick="viewSession('${s.id}')">
+        <div class="recent-icon" style="background:${icon.bg};color:${icon.color}">${icon.label}</div>
+        <div style="flex:1">
+          <p style="font-size:15px;font-weight:600">${esc(s.topic)}</p>
+          <p style="font-size:13px;color:var(--text2)">${esc(s.subject)} · Grade ${esc(s.grade_level)} · ${dateStr}</p>
+        </div>
+        <span class="session-score" style="background:var(--pri-light);color:var(--pri)">+25 XP</span>
+      </div>`;
+  });
+  container.innerHTML = html;
+}
+
+function viewSession(id) {
+  const session = sessions.find(s => s.id === id);
+  if (session && session.result_json) {
+    lastResult = session.result_json;
+    renderResults(lastResult);
+    renderCheatSheet(lastResult);
+    go('results');
+  }
+}
+
+// ==========================================
+// NAVIGATION
+// ==========================================
+function go(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('s-' + id).classList.add('active');
+
+  // Update nav highlights
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const map = { home:0, camera:1, cheatsheet:2, progress:3 };
+  const items = document.querySelectorAll('.nav-item');
+  if (map[id] !== undefined && items[map[id]]) items[map[id]].classList.add('active');
+
+  // Screen-specific setup
+  if (id === 'home' && activeChild) {
+    const name = currentUser?.user_metadata?.name || '';
+    const hour = new Date().getHours();
+    const greetKey = hour < 12 ? 'home_greeting_morning' : hour < 17 ? 'home_greeting_afternoon' : 'home_greeting_evening';
+    var greetText = name ? t('home_hey', {name: name}) : t(greetKey) + ',';
+    document.getElementById('home-greeting').textContent = greetText;
+    document.getElementById('home-title').textContent = t('home_helping', {name: activeChild.name});
+    document.getElementById('home-avatar').textContent = activeChild.name.charAt(0).toUpperCase();
+    updateGamification();
+  }
+  if (id === 'selectchild') renderChildSelector();
+  if (id === 'camera' && activeChild) {
+    document.getElementById('camera-child-badge').innerHTML =
+      '<span class="badge" style="background:var(--pri-light);color:var(--pri)">' + esc(activeChild.name) + '</span>';
+  }
+  if (id === 'progress' && activeChild) {
+    document.getElementById('progress-title').textContent = t('progress_childname', {name: activeChild.name});
+    renderProgress();
+  }
+  if (id === 'settings') {
+    var ls = document.getElementById('lang-select');
+    if (ls) ls.value = currentLang;
+  }
+  if (id === 'addchild' && children.length > 0) {
+    document.getElementById('skip-add-child').style.display = 'block';
+  }
+
+  // Apply translations for current language
+  applyTranslations();
+
+  // Scroll to top
+  const body = document.querySelector('#s-' + id + ' .screen-body');
+  if (body) body.scrollTop = 0;
+}
+
+// ==========================================
+// FILE HANDLING
+// ==========================================
+function handleFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  imageType = file.type || 'image/jpeg';
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    document.getElementById('upload-placeholder').style.display = 'none';
+    const img = document.getElementById('preview-img');
+    img.src = ev.target.result;
+    img.style.display = 'block';
+    document.getElementById('analyze-btn').disabled = false;
+    imageData = ev.target.result.split(',')[1];
+  };
+  reader.readAsDataURL(file);
+}
+
+// ==========================================
+// AI ANALYSIS
+// ==========================================
+async function analyzeHomework() {
+  if (!imageData) return;
+  go('scanning');
+
+  const statusEl = document.getElementById('scan-status');
+  const detailEl = document.getElementById('scan-detail');
+  const messages = [
+    { s: t('scan_analyzing'), d: t('scan_sending') },
+    { s: t('scan_reading'), d: t('scan_identifying') },
+    { s: t('scan_building'), d: t('scan_creating') },
+    { s: t('scan_almost'), d: t('scan_polishing') }
+  ];
+  let msgIdx = 0;
+  statusEl.textContent = messages[0].s;
+  detailEl.textContent = messages[0].d;
+  const msgInterval = setInterval(() => {
+    msgIdx++;
+    if (msgIdx < messages.length) {
+      statusEl.textContent = messages[msgIdx].s;
+      detailEl.textContent = messages[msgIdx].d;
+    }
+  }, 3000);
+
+  try {
+    const response = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: imageData, media_type: imageType, language: currentLang })
+    });
+    clearInterval(msgInterval);
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || 'Server error');
+    }
+    const result = await response.json();
+    if (!result.success) throw new Error(result.error || 'Could not analyze');
+
+    lastResult = result;
+    renderResults(result);
+    renderCheatSheet(result);
+    await saveSession(result);
+
+    // Reset camera for next use
+    document.getElementById('upload-placeholder').style.display = 'block';
+    document.getElementById('preview-img').style.display = 'none';
+    document.getElementById('analyze-btn').disabled = true;
+    imageData = null;
+
+    go('results');
+  } catch(err) {
+    clearInterval(msgInterval);
+    document.getElementById('error-msg').textContent = err.message;
+    go('error');
+  }
+}
+
+// ==========================================
+// RENDER RESULTS
+// ==========================================
+function renderResults(data) {
+  const a = data.analysis;
+  const c = data.coaching;
+  const container = document.getElementById('results-body');
+
+  let stepsHtml = '';
+  c.steps.forEach((step, i) => {
+    const isFirst = i === 0;
+    let qHtml = '';
+    step.guiding_questions.forEach(q => { qHtml += '<p>"' + esc(q) + '"</p>'; });
+    stepsHtml += `
+      <div class="step-card ${isFirst?'expanded':''}" id="step-${i}" onclick="toggleStep(${i},${c.steps.length})">
+        <div style="display:flex;align-items:center;gap:12px;${isFirst?'margin-bottom:12px':''}">
+          <div class="step-num">${step.step_number}</div>
+          <div style="flex:1"><p style="font-size:15px;font-weight:600">${esc(step.title)}</p><p style="font-size:13px;color:var(--text2)">${esc(step.description)}</p></div>
+          <span style="font-size:18px;color:var(--text3);transform:rotate(${isFirst?'0':'-90'}deg);transition:transform .2s" id="arrow-${i}">&#9662;</span>
+        </div>
+        <div id="detail-${i}" style="${isFirst?'':'display:none;'}margin-top:12px">
+          <p style="font-size:14px;color:var(--text2);margin-bottom:10px">' + t('results_askyourchild') + '</p>
+          <div class="question-box">${qHtml}</div>
+          <div class="tip-box"><strong>' + t('results_parenttip') + '</strong> ${esc(step.parent_tip)}</div>
+          ${step.if_stuck?'<div class="stuck-box"><strong>' + t('results_ifstuck') + '</strong> '+esc(step.if_stuck)+'</div>':''}
+        </div>
+      </div>`;
+  });
+
+  container.innerHTML = `
+    <div style="background:var(--bg);border-radius:14px;padding:16px;display:flex;align-items:center;gap:16px;margin-bottom:12px">
+      <svg width="52" height="52" viewBox="0 0 52 52"><circle cx="26" cy="26" r="22" fill="none" stroke="var(--border)" stroke-width="3"/><circle cx="26" cy="26" r="22" fill="none" stroke="var(--pri)" stroke-width="3" stroke-dasharray="138.2" stroke-dashoffset="110" stroke-linecap="round" transform="rotate(-90 26 26)"/></svg>
+      <div>
+        <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+          <span class="badge" style="background:var(--pri-light);color:var(--pri)">${esc(a.subject)}</span>
+          <span class="badge" style="background:var(--acc-light);color:var(--acc-dark)">Grade ${esc(a.grade_level)}</span>
+          ${activeChild?'<span class="badge" style="background:var(--blue-light);color:var(--blue-dark)">'+esc(activeChild.name)+'</span>':''}
+        </div>
+        <p style="font-size:15px;font-weight:600">${esc(a.topic)}</p>
+        <p style="font-size:13px;color:var(--text2)">${a.problem_count||''} problem${(a.problem_count||0)!==1?'s':''} · ~${a.estimated_time_minutes||'?'} min</p>
+      </div>
+    </div>
+    <div style="background:var(--pri-light);border-radius:12px;padding:14px 16px;margin-bottom:16px">
+      <p style="font-size:14px;color:var(--pri-dark);line-height:1.5"><strong>${esc(c.encouragement)}</strong></p>
+    </div>
+    <p style="font-size:14px;font-weight:600;color:var(--text2);margin-bottom:8px">' + t('results_stepbystep') + '</p>
+    ${stepsHtml}
+    ${c.wrap_up?`<div style="background:var(--pri-light);border-radius:14px;padding:16px;margin-top:4px">
+      <p style="font-size:14px;font-weight:600;color:var(--pri-dark);margin-bottom:8px">' + t('results_wrapup') + '</p>
+      <p style="font-size:14px;color:var(--pri-dark);line-height:1.6;margin-bottom:4px">"${esc(c.wrap_up.celebration_prompt)}"</p>
+      <p style="font-size:14px;color:var(--pri-dark);line-height:1.6">"${esc(c.wrap_up.preview_prompt)}"</p>
+    </div>`:''}
+    <button class="btn btn-primary" style="margin-top:16px;margin-bottom:24px" onclick="go('home')">' + t('btn_done') + '</button>`;
+}
+
+// ==========================================
+// RENDER CHEAT SHEET
+// ==========================================
+function renderCheatSheet(data) {
+  const cs = data.cheat_sheet;
+  const a = data.analysis;
+  const container = document.getElementById('cheatsheet-body');
+
+  let exHtml = '';
+  if (cs.worked_example && cs.worked_example.steps) {
+    cs.worked_example.steps.forEach((s,i) => {
+      exHtml += `<div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start"><div class="mini-num">${i+1}</div><p style="font-size:14px;line-height:1.6">${esc(s)}</p></div>`;
+    });
+  }
+  let mHtml = '';
+  if (cs.common_mistakes) {
+    cs.common_mistakes.forEach(m => {
+      mHtml += `<p style="margin-bottom:10px"><strong>${esc(m.mistake)}</strong> — ${esc(m.what_to_say)}</p>`;
+    });
+  }
+  let vHtml = '';
+  if (cs.vocabulary) {
+    cs.vocabulary.forEach(v => {
+      vHtml += `<div style="background:var(--bg);border-radius:10px;padding:12px 14px"><p style="font-size:14px;font-weight:600">${esc(v.term)}</p><p style="font-size:13px;color:var(--text2)">${esc(v.definition)}</p></div>`;
+    });
+  }
+
+  container.innerHTML = `
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <span class="badge" style="background:var(--pri-light);color:var(--pri)">${esc(a.subject)}</span>
+      <span class="badge" style="background:var(--acc-light);color:var(--acc-dark)">Grade ${esc(a.grade_level)}</span>
+    </div>
+    <div style="margin-bottom:20px">
+      <p class="cheat-label">The concept in 30 seconds</p>
+      <p style="font-size:15px;line-height:1.7">${esc(cs.quick_explanation)}</p>
+      ${cs.analogy?'<p style="font-size:14px;color:var(--text2);line-height:1.6;margin-top:8px;font-style:italic">'+esc(cs.analogy)+'</p>':''}
+    </div>
+    ${cs.worked_example?`<div style="margin-bottom:20px"><p class="cheat-label">Worked example</p><div class="example-box"><p style="font-weight:700;margin-bottom:14px;font-size:17px;text-align:center">${esc(cs.worked_example.problem)}</p>${exHtml}</div></div>`:''}
+    ${mHtml?`<div style="margin-bottom:20px"><p class="cheat-label">Watch out for these mistakes</p><div class="tip-box">${mHtml}</div></div>`:''}
+    ${vHtml?`<div style="margin-bottom:20px"><p class="cheat-label">Vocabulary</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${vHtml}</div></div>`:''}`;
+}
+
+// ==========================================
+// RENDER PROGRESS
+// ==========================================
+function renderProgress() {
+  const container = document.getElementById('progress-body');
+  if (!sessions.length) {
+    container.innerHTML = '<p style="font-size:14px;color:var(--text3);text-align:center;padding:40px 0">' + t('progress_empty') + '</p>';
+    return;
+  }
+
+  const subjects = {};
+  sessions.forEach(s => {
+    if (!subjects[s.subject]) subjects[s.subject] = { count:0, problems:0 };
+    subjects[s.subject].count++;
+    subjects[s.subject].problems += s.problem_count || 0;
+  });
+
+  const iconMap = { Math:{bg:'var(--pri-light)',color:'var(--pri)',label:'fx'},
+    ELA:{bg:'var(--acc-light)',color:'var(--acc-dark)',label:'Aa'},
+    Science:{bg:'var(--blue-light)',color:'var(--blue-dark)',label:'H₂O'},
+    'Social Studies':{bg:'#FAECE7',color:'#993C1D',label:'US'} };
+
+  let statsHtml = `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:24px">
+      <div class="stat-card"><p class="stat-val">${sessions.length}</p><p class="stat-label">Sessions</p></div>
+      <div class="stat-card"><p class="stat-val">${sessions.reduce((a,s)=>a+(s.problem_count||0),0)}</p><p class="stat-label">Problems</p></div>
+      <div class="stat-card"><p class="stat-val">${Object.keys(subjects).length}</p><p class="stat-label">Subjects</p></div>
+    </div>`;
+
+  let subjHtml = '<p style="font-size:14px;font-weight:600;color:var(--text2);margin-bottom:10px">By subject</p><div class="card">';
+  Object.entries(subjects).forEach(([subj, data]) => {
+    const icon = iconMap[subj] || iconMap.Math;
+    subjHtml += `
+      <div class="subj-row">
+        <div class="recent-icon" style="background:${icon.bg};color:${icon.color}">${icon.label}</div>
+        <div style="flex:1"><p style="font-size:15px;font-weight:600">${esc(subj)}</p><p style="font-size:13px;color:var(--text2)">${data.count} session${data.count!==1?'s':''} · ${data.problems} problems</p></div>
+      </div>`;
+  });
+  subjHtml += '</div>';
+
+  let timeHtml = '<p style="font-size:14px;font-weight:600;color:var(--text2);margin-bottom:10px;margin-top:8px">Recent sessions</p>';
+  sessions.slice(0,10).forEach(s => {
+    const icon = iconMap[s.subject] || iconMap.Math;
+    timeHtml += `
+      <div class="recent-item" onclick="viewSession('${s.id}')">
+        <div class="recent-icon" style="background:${icon.bg};color:${icon.color}">${icon.label}</div>
+        <div style="flex:1">
+          <p style="font-size:14px;font-weight:600">${esc(s.topic)}</p>
+          <p style="font-size:13px;color:var(--text2)">${esc(s.subject)} · Grade ${esc(s.grade_level)} · ${formatDate(new Date(s.created_at))}</p>
+        </div>
+      </div>`;
+  });
+
+  container.innerHTML = statsHtml + subjHtml + timeHtml;
+}
+
+// ==========================================
+// STEP ACCORDION
+// ==========================================
+function toggleStep(n, total) {
+  const detail = document.getElementById('detail-'+n);
+  const card = document.getElementById('step-'+n);
+  const arrow = document.getElementById('arrow-'+n);
+  if (detail.style.display === 'none') {
+    for (let i=0;i<total;i++) {
+      const d=document.getElementById('detail-'+i); const c=document.getElementById('step-'+i); const a=document.getElementById('arrow-'+i);
+      if(d) d.style.display='none'; if(c) c.classList.remove('expanded'); if(a) a.style.transform='rotate(-90deg)';
+    }
+    detail.style.display='block'; card.classList.add('expanded'); arrow.style.transform='rotate(0deg)';
+  } else {
+    detail.style.display='none'; card.classList.remove('expanded'); arrow.style.transform='rotate(-90deg)';
+  }
+}
+
+// ==========================================
+// HELPERS
+// ==========================================
+function esc(str) {
+  if (!str) return '';
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function formatDate(date) {
+  const now = new Date();
+  const diff = now - date;
+  const days = Math.floor(diff / 86400000);
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return days + ' days ago';
+  return date.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+}
+
+// ==========================================
+// GAMIFICATION
+// ==========================================
+const XP_PER_SESSION = 25;
+
+const LEVELS = [
+  { level:1, title:'Beginner', xp:0 },
+  { level:2, title:'Helper', xp:100 },
+  { level:3, title:'Guide', xp:250 },
+  { level:4, title:'Coach', xp:500 },
+  { level:5, title:'Mentor', xp:1000 },
+  { level:6, title:'Champion', xp:2000 },
+  { level:7, title:'Legend', xp:5000 }
+];
+
+const BADGES = [
+  { id:'first', name:'First session', icon:'star', check: s => s.length >= 1, color:'var(--acc)', iconSvg:'<path d="M12 2L15 8.5 22 9.5 17 14.5 18 21.5 12 18 6 21.5 7 14.5 2 9.5 9 8.5 12 2Z" fill="FILL"/>' },
+  { id:'streak3', name:'3-day streak', icon:'fire', check: (s,str) => str >= 3, color:'#D85A30', iconSvg:'<path d="M12 2C8 7 4 10 4 14a8 8 0 0016 0c0-4-4-7-8-12z" fill="FILL"/>' },
+  { id:'ten', name:'10 sessions', icon:'check', check: s => s.length >= 10, color:'var(--pri)', iconSvg:'<path d="M9 12l2 2 4-4M12 2a10 10 0 100 20 10 10 0 000-20z" stroke="FILL" stroke-width="2" fill="none"/>' },
+  { id:'speed', name:'Speed run', icon:'clock', check: s => s.some(x => (x.estimated_time||99) <= 10), color:'var(--blue)', iconSvg:'<path d="M12 6v6l4 2M12 2a10 10 0 100 20 10 10 0 000-20z" stroke="FILL" stroke-width="2" fill="none"/>' },
+  { id:'multi', name:'Multi-subject', icon:'books', check: s => { const subs = new Set(s.map(x=>x.subject)); return subs.size >= 3; }, color:'#534AB7', iconSvg:'<rect x="4" y="3" width="6" height="18" rx="1" fill="FILL"/><rect x="12" y="5" width="6" height="16" rx="1" fill="FILL" opacity=".6"/>' },
+  { id:'streak7', name:'7-day streak', icon:'fire2', check: (s,str) => str >= 7, color:'#993C1D', iconSvg:'<path d="M12 2C8 7 4 10 4 14a8 8 0 0016 0c0-4-4-7-8-12z" fill="FILL"/><path d="M12 9c-2 3-4 4.5-4 7a4 4 0 008 0c0-2.5-2-4-4-7z" fill="FILL" opacity=".5"/>' }
+];
+
+const QUOTES = [
+  "The greatest gift you can give your child isn't the answer — it's the confidence to find it themselves.",
+  "Every question you ask is a seed of curiosity you're planting.",
+  "You don't have to know all the answers. You just have to ask the right questions.",
+  "Homework isn't about getting it right — it's about learning how to think.",
+  "A child who struggles and succeeds learns more than one who never struggled at all.",
+  "Your patience tonight is their confidence tomorrow.",
+  "The best teachers don't give answers — they make you believe you can find them.",
+  "Progress isn't always visible, but it's always happening.",
+  "One step at a time, one hint at a time — that's how confidence is built.",
+  "You're not doing homework for them. You're showing them they can do it."
+];
+
+function getStreak() {
+  if (!sessions.length) return 0;
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const days = new Set();
+  sessions.forEach(s => {
+    const d = new Date(s.created_at);
+    d.setHours(0,0,0,0);
+    days.add(d.getTime());
+  });
+  const sorted = [...days].sort((a,b) => b - a);
+  // Check if most recent session is today or yesterday
+  const diff = (today.getTime() - sorted[0]) / 86400000;
+  if (diff > 1) return 0;
+  let streak = 1;
+  for (let i = 1; i < sorted.length; i++) {
+    const gap = (sorted[i-1] - sorted[i]) / 86400000;
+    if (gap === 1) streak++;
+    else break;
+  }
+  return streak;
+}
+
+function getLevel(xp) {
+  let current = LEVELS[0];
+  for (let i = LEVELS.length - 1; i >= 0; i--) {
+    if (xp >= LEVELS[i].xp) { current = LEVELS[i]; break; }
+  }
+  const next = LEVELS[Math.min(current.level, LEVELS.length - 1)];
+  return { current, next };
+}
+
+function animateNumber(el, target, duration) {
+  const start = parseInt(el.textContent) || 0;
+  if (start === target) return;
+  const diff = target - start;
+  const startTime = performance.now();
+  function tick(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    el.textContent = Math.round(start + diff * eased);
+    if (progress < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+function updateGamification() {
+  const totalXP = sessions.length * XP_PER_SESSION;
+  const streak = getStreak();
+  const { current, next } = getLevel(totalXP);
+
+  // Animate streak & XP numbers
+  animateNumber(document.getElementById('streak-num'), streak, 600);
+  animateNumber(document.getElementById('xp-num'), totalXP, 800);
+
+  // Flame wiggle for active streaks
+  const flame = document.getElementById('flame-icon');
+  if (streak > 0) {
+    flame.style.animation = 'flameWiggle 1.5s ease-in-out infinite';
+  } else {
+    flame.style.animation = 'none';
+    flame.style.opacity = '0.4';
+  }
+
+  // Level bar
+  document.getElementById('level-title').textContent = t('level_label', {n: current.level, title: current.title});
+  const xpInLevel = totalXP - current.xp;
+  const xpNeeded = next.xp - current.xp;
+  const pct = current.level >= LEVELS.length ? 100 : Math.min(Math.round((xpInLevel / xpNeeded) * 100), 100);
+  document.getElementById('level-subtitle').textContent = t('xp_to_level', {current: xpInLevel, needed: xpNeeded, next: next.level});
+  setTimeout(() => {
+    document.getElementById('level-fill').style.width = pct + '%';
+  }, 200);
+
+  // Daily challenge text
+  const challengeEl = document.getElementById('challenge-text');
+  const todaySessions = sessions.filter(s => {
+    const d = new Date(s.created_at); d.setHours(0,0,0,0);
+    const t = new Date(); t.setHours(0,0,0,0);
+    return d.getTime() === t.getTime();
+  }).length;
+  if (todaySessions === 0) challengeEl.textContent = 'Complete your first session today';
+  else if (todaySessions === 1) challengeEl.textContent = 'Complete a second session today';
+  else challengeEl.textContent = todaySessions + ' sessions done — keep going!';
+
+  // Daily quote
+  const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(),0,0)) / 86400000);
+  document.getElementById('daily-quote').textContent = '"' + QUOTES[dayOfYear % QUOTES.length] + '"';
+
+  // Badges
+  renderBadges(streak);
+}
+
+function renderBadges(streak) {
+  const container = document.getElementById('badges-container');
+  let html = '';
+  BADGES.forEach(b => {
+    const unlocked = b.check(sessions, streak);
+    const fill = unlocked ? b.color : 'var(--text3)';
+    const svg = b.iconSvg.replace(/FILL/g, fill);
+    html += `
+      <div class="badge-item">
+        <div class="badge-circle ${unlocked ? 'bounce' : 'locked'}" style="background:${unlocked ? fill+'15' : 'var(--bg)'};border-color:${unlocked ? b.color : 'var(--text3)'}">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">${svg}</svg>
+        </div>
+        <p class="badge-name">${b.name}</p>
+      </div>`;
+  });
+  container.innerHTML = html;
+}
+
+// Flame wiggle keyframes (injected dynamically)
+(function() {
+  const style = document.createElement('style');
+  style.textContent = '@keyframes flameWiggle{0%,100%{transform:rotate(0deg)}25%{transform:rotate(-6deg)}75%{transform:rotate(6deg)}}';
+  document.head.appendChild(style);
+})();
+</script>
+</body>
+</html>
