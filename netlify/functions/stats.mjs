@@ -92,19 +92,38 @@ export async function handler(event) {
     var todaySessions = 0;
 
     if (supabaseUrl && supabaseKey) {
-      // Count sessions
-      var sessResponse = await fetch(supabaseUrl + "/rest/v1/sessions?select=id,created_at", {
-        headers: { "apikey": supabaseKey, "Authorization": "Bearer " + supabaseKey }
+      var supaHeaders = { "apikey": supabaseKey, "Authorization": "Bearer " + supabaseKey, "Prefer": "count=exact" };
+
+      // Get total session count using head request with count
+      var totalResponse = await fetch(supabaseUrl + "/rest/v1/sessions?select=id", {
+        method: "HEAD",
+        headers: supaHeaders
       });
-      if (sessResponse.ok) {
-        var sessData = await sessResponse.json();
-        totalSessions = sessData.length;
-        var today = new Date().toISOString().split('T')[0];
-        sessData.forEach(function(s) {
-          if (s.created_at && s.created_at.startsWith(today)) {
-            todaySessions++;
+      if (totalResponse.ok) {
+        var contentRange = totalResponse.headers.get("content-range");
+        if (contentRange) {
+          var parts = contentRange.split("/");
+          if (parts.length > 1 && parts[1] !== "*") {
+            totalSessions = parseInt(parts[1], 10);
           }
-        });
+        }
+      }
+
+      // Get today's sessions - use date filter for accurate count
+      var now = new Date();
+      var todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+      var todayResponse = await fetch(supabaseUrl + "/rest/v1/sessions?select=id&created_at=gte." + todayStart, {
+        method: "HEAD",
+        headers: supaHeaders
+      });
+      if (todayResponse.ok) {
+        var todayRange = todayResponse.headers.get("content-range");
+        if (todayRange) {
+          var todayParts = todayRange.split("/");
+          if (todayParts.length > 1 && todayParts[1] !== "*") {
+            todaySessions = parseInt(todayParts[1], 10);
+          }
+        }
       }
     }
 

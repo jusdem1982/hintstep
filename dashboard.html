@@ -127,9 +127,9 @@ document.getElementById('dash-key').addEventListener('keydown', function(e) {
 
 async function loadStats() {
   try {
-    var response = await fetch('/api/stats', {
+    var response = await fetch('/api/stats?t=' + Date.now(), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
       body: JSON.stringify({ key: dashKey })
     });
     var data = await response.json();
