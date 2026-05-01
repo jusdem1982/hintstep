@@ -418,6 +418,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
       </div>
     </div>
 
+    <!-- Scan counter -->
+    <div id="scan-counter" style="text-align:center;margin-bottom:12px;display:none">
+      <p style="font-size:13px;color:var(--text2)"><span id="scans-remaining"></span> free scans remaining</p>
+    </div>
+
     <!-- Quote of the Day -->
     <div class="quote-card">
       <p style="font-size:14px;color:var(--text);line-height:1.6;font-style:italic" id="daily-quote">"The greatest gift you can give your child isn't the answer — it's the confidence to find it themselves."</p>
@@ -639,6 +644,46 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     <button class="btn btn-outline" onclick="handleLogout()" style="margin-top:8px;color:var(--danger);border-color:var(--danger)" data-i18n="btn_signout">Sign out</button>
     <div class="divider"></div>
     <p style="font-size:13px;color:var(--text3);text-align:center;margin-top:8px">For customer support, please reach out to <a href="mailto:justin@hintstep.com" style="color:var(--pri);text-decoration:none">justin@hintstep.com</a></p>
+  </div>
+</div>
+
+<!-- ============ PAYWALL ============ -->
+<div class="screen" id="s-paywall">
+  <div class="header">
+    <button class="back-btn" onclick="go('home')">&#8592;</button>
+    <p class="header-title">Upgrade to HintStep</p>
+  </div>
+  <div class="screen-body fade-in" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px 24px">
+    <div style="width:80px;height:80px;border-radius:50%;background:var(--acc-light);display:flex;align-items:center;justify-content:center;margin-bottom:20px">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="var(--acc)"/></svg>
+    </div>
+    <h2 style="font-size:22px;font-weight:700;margin-bottom:8px">You've used your 5 free scans</h2>
+    <p style="font-size:15px;color:var(--text2);line-height:1.6;margin-bottom:24px;max-width:320px">Upgrade to keep coaching your child through homework with unlimited scans, all 15 languages, and state-aligned standards.</p>
+    <div style="background:var(--surface);border:2px solid var(--pri);border-radius:16px;padding:24px;width:100%;max-width:320px;margin-bottom:20px">
+      <p style="font-size:14px;color:var(--pri);font-weight:600;margin-bottom:4px">MONTHLY</p>
+      <p style="font-size:36px;font-weight:800;margin-bottom:4px">$4.99<span style="font-size:16px;font-weight:400;color:var(--text2)">/month</span></p>
+      <p style="font-size:13px;color:var(--text2)">Cancel anytime</p>
+    </div>
+    <div style="text-align:left;width:100%;max-width:320px;margin-bottom:24px">
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="var(--pri)"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+        <p style="font-size:14px">Unlimited homework scans</p>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="var(--pri)"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+        <p style="font-size:14px">State-aligned education standards</p>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="var(--pri)"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+        <p style="font-size:14px">15 languages supported</p>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="var(--pri)"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+        <p style="font-size:14px">Parent cheat sheets & video guides</p>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="startCheckout()" id="checkout-btn" style="max-width:320px">Subscribe — $4.99/month</button>
+    <p style="font-size:12px;color:var(--text3);margin-top:12px">Secure payment powered by Stripe</p>
   </div>
 </div>
 
@@ -2446,6 +2491,9 @@ let activeChild = null;
 let sessions = [];
 let imageData = null;
 let imageType = 'image/jpeg';
+let isSubscribed = false;
+let totalScanCount = 0;
+const FREE_SCAN_LIMIT = 5;
 let lastResult = null;
 
 // ==========================================
@@ -2464,11 +2512,18 @@ async function init() {
   if (data.session) {
     currentUser = data.session.user;
     await loadChildren();
+    await checkSubscription();
     if (children.length === 0) {
       go('addchild');
     } else if (children.length === 1) {
       activeChild = children[0];
       await loadSessions();
+      // Check for payment success redirect
+      var urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('payment') === 'success') {
+        isSubscribed = true;
+        window.history.replaceState({}, '', '/');
+      }
       go('home');
     } else {
       go('selectchild');
@@ -2673,6 +2728,16 @@ async function loadSessions() {
     .limit(20);
   sessions = data || [];
   renderRecentSessions();
+  // Load total scan count across all children for paywall
+  await loadTotalScans();
+}
+
+async function loadTotalScans() {
+  if (!currentUser) return;
+  const { data } = await sb.from('sessions')
+    .select('id')
+    .eq('user_id', currentUser.id);
+  totalScanCount = data ? data.length : 0;
 }
 
 async function saveSession(result) {
@@ -2754,6 +2819,19 @@ function go(id) {
     document.getElementById('home-title').textContent = t('home_helping', {name: activeChild.name});
     document.getElementById('home-avatar').textContent = activeChild.name.charAt(0).toUpperCase();
     updateGamification();
+    // Update scan counter
+    var counterEl = document.getElementById('scan-counter');
+    var remainEl = document.getElementById('scans-remaining');
+    if (counterEl && remainEl) {
+      if (isSubscribed) {
+        counterEl.style.display = 'none';
+      } else {
+        var remaining = FREE_SCAN_LIMIT - totalScanCount;
+        if (remaining < 0) remaining = 0;
+        remainEl.textContent = remaining;
+        counterEl.style.display = 'block';
+      }
+    }
   }
   if (id === 'selectchild') renderChildSelector();
   if (id === 'camera' && activeChild) {
@@ -2804,8 +2882,55 @@ function handleFile(e) {
 // ==========================================
 // AI ANALYSIS
 // ==========================================
+async function checkSubscription() {
+  if (!currentUser) return;
+  try {
+    var response = await fetch('/api/check-sub', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: currentUser.email })
+    });
+    var data = await response.json();
+    isSubscribed = data.subscribed || false;
+  } catch(e) {
+    isSubscribed = false;
+  }
+}
+
+async function startCheckout() {
+  var btn = document.getElementById('checkout-btn');
+  btn.disabled = true;
+  btn.textContent = 'Redirecting to checkout...';
+  try {
+    var response = await fetch('/api/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: currentUser.email })
+    });
+    var data = await response.json();
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      btn.disabled = false;
+      btn.textContent = 'Subscribe — $4.99/month';
+      alert(data.error || 'Something went wrong');
+    }
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = 'Subscribe — $4.99/month';
+    alert('Something went wrong. Please try again.');
+  }
+}
+
 async function analyzeHomework() {
   if (!imageData) return;
+
+  // Check scan limit
+  if (!isSubscribed && totalScanCount >= FREE_SCAN_LIMIT) {
+    go('paywall');
+    return;
+  }
+
   go('scanning');
 
   const statusEl = document.getElementById('scan-status');
