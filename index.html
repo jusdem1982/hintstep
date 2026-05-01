@@ -2772,11 +2772,22 @@ function renderResults(data) {
   const c = data.coaching;
   const container = document.getElementById('results-body');
 
+  var labelAskChild = t('results_askyourchild');
+  var labelParentTip = t('results_parenttip');
+  var labelIfStuck = t('results_ifstuck');
+  var labelStepByStep = t('results_stepbystep');
+  var labelWrapUp = t('results_wrapup');
+  var labelDone = t('btn_done');
+
   let stepsHtml = '';
   c.steps.forEach((step, i) => {
     const isFirst = i === 0;
     let qHtml = '';
     step.guiding_questions.forEach(q => { qHtml += '<p>"' + esc(q) + '"</p>'; });
+    var stuckHtml = '';
+    if (step.if_stuck) {
+      stuckHtml = '<div class="stuck-box"><strong>' + labelIfStuck + '</strong> ' + esc(step.if_stuck) + '</div>';
+    }
     stepsHtml += `
       <div class="step-card ${isFirst?'expanded':''}" id="step-${i}" onclick="toggleStep(${i},${c.steps.length})">
         <div style="display:flex;align-items:center;gap:12px;${isFirst?'margin-bottom:12px':''}">
@@ -2785,13 +2796,29 @@ function renderResults(data) {
           <span style="font-size:18px;color:var(--text3);transform:rotate(${isFirst?'0':'-90'}deg);transition:transform .2s" id="arrow-${i}">&#9662;</span>
         </div>
         <div id="detail-${i}" style="${isFirst?'':'display:none;'}margin-top:12px">
-          <p style="font-size:14px;color:var(--text2);margin-bottom:10px">' + t('results_askyourchild') + '</p>
+          <p style="font-size:14px;color:var(--text2);margin-bottom:10px">${labelAskChild}</p>
           <div class="question-box">${qHtml}</div>
-          <div class="tip-box"><strong>' + t('results_parenttip') + '</strong> ${esc(step.parent_tip)}</div>
-          ${step.if_stuck?'<div class="stuck-box"><strong>' + t('results_ifstuck') + '</strong> '+esc(step.if_stuck)+'</div>':''}
+          <div class="tip-box"><strong>${labelParentTip}</strong> ${esc(step.parent_tip)}</div>
+          ${stuckHtml}
         </div>
       </div>`;
   });
+
+  var videoHtml = '';
+  if (data.video_search_query) {
+    var videoUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(data.video_search_query);
+    videoHtml = '<a href="' + videoUrl + '" target="_blank" rel="noopener" class="btn btn-outline" style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px;text-decoration:none;color:var(--text)"><svg width="20" height="20" viewBox="0 0 24 24" fill="#FF0000"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31.4 31.4 0 0 0 0 12a31.4 31.4 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31.4 31.4 0 0 0 24 12a31.4 31.4 0 0 0-.5-5.8z"/><polygon fill="#FFF" points="9.75,15.02 15.5,12 9.75,8.98"/></svg> Watch helpful videos</a>';
+  }
+
+  var wrapUpHtml = '';
+  if (c.wrap_up) {
+    wrapUpHtml = '<div style="background:var(--pri-light);border-radius:14px;padding:16px;margin-top:4px"><p style="font-size:14px;font-weight:600;color:var(--pri-dark);margin-bottom:8px">' + labelWrapUp + '</p><p style="font-size:14px;color:var(--pri-dark);line-height:1.6;margin-bottom:4px">"' + esc(c.wrap_up.celebration_prompt) + '"</p><p style="font-size:14px;color:var(--pri-dark);line-height:1.6">"' + esc(c.wrap_up.preview_prompt) + '"</p></div>';
+  }
+
+  var childBadge = '';
+  if (activeChild) {
+    childBadge = '<span class="badge" style="background:var(--blue-light);color:var(--blue-dark)">' + esc(activeChild.name) + '</span>';
+  }
 
   container.innerHTML = `
     <div style="background:var(--bg);border-radius:14px;padding:16px;display:flex;align-items:center;gap:16px;margin-bottom:12px">
@@ -2800,7 +2827,7 @@ function renderResults(data) {
         <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
           <span class="badge" style="background:var(--pri-light);color:var(--pri)">${esc(a.subject)}</span>
           <span class="badge" style="background:var(--acc-light);color:var(--acc-dark)">Grade ${esc(a.grade_level)}</span>
-          ${activeChild?'<span class="badge" style="background:var(--blue-light);color:var(--blue-dark)">'+esc(activeChild.name)+'</span>':''}
+          ${childBadge}
         </div>
         <p style="font-size:15px;font-weight:600">${esc(a.topic)}</p>
         <p style="font-size:13px;color:var(--text2)">${a.problem_count||''} problem${(a.problem_count||0)!==1?'s':''} · ~${a.estimated_time_minutes||'?'} min</p>
@@ -2809,14 +2836,11 @@ function renderResults(data) {
     <div style="background:var(--pri-light);border-radius:12px;padding:14px 16px;margin-bottom:16px">
       <p style="font-size:14px;color:var(--pri-dark);line-height:1.5"><strong>${esc(c.encouragement)}</strong></p>
     </div>
-    <p style="font-size:14px;font-weight:600;color:var(--text2);margin-bottom:8px">' + t('results_stepbystep') + '</p>
+    <p style="font-size:14px;font-weight:600;color:var(--text2);margin-bottom:8px">${labelStepByStep}</p>
     ${stepsHtml}
-    ${c.wrap_up?`<div style="background:var(--pri-light);border-radius:14px;padding:16px;margin-top:4px">
-      <p style="font-size:14px;font-weight:600;color:var(--pri-dark);margin-bottom:8px">' + t('results_wrapup') + '</p>
-      <p style="font-size:14px;color:var(--pri-dark);line-height:1.6;margin-bottom:4px">"${esc(c.wrap_up.celebration_prompt)}"</p>
-      <p style="font-size:14px;color:var(--pri-dark);line-height:1.6">"${esc(c.wrap_up.preview_prompt)}"</p>
-    </div>`:''}
-    <button class="btn btn-primary" style="margin-top:16px;margin-bottom:24px" onclick="go('home')">' + t('btn_done') + '</button>`;
+    ${wrapUpHtml}
+    ${videoHtml}
+    <button class="btn btn-primary" style="margin-top:16px;margin-bottom:24px" onclick="go('home')">${labelDone}</button>`;
 }
 
 // ==========================================
@@ -2846,19 +2870,41 @@ function renderCheatSheet(data) {
     });
   }
 
+  var label30sec = t('cheat_30sec');
+  var labelWorked = t('cheat_worked');
+  var labelMistakes = t('cheat_mistakes');
+  var labelVocab = t('cheat_vocab');
+
+  var analogyHtml = '';
+  if (cs.analogy) {
+    analogyHtml = '<p style="font-size:14px;color:var(--text2);line-height:1.6;margin-top:8px;font-style:italic">' + esc(cs.analogy) + '</p>';
+  }
+  var workedHtml = '';
+  if (cs.worked_example) {
+    workedHtml = '<div style="margin-bottom:20px"><p class="cheat-label">' + labelWorked + '</p><div class="example-box"><p style="font-weight:700;margin-bottom:14px;font-size:17px;text-align:center">' + esc(cs.worked_example.problem) + '</p>' + exHtml + '</div></div>';
+  }
+  var mistakesHtml = '';
+  if (mHtml) {
+    mistakesHtml = '<div style="margin-bottom:20px"><p class="cheat-label">' + labelMistakes + '</p><div class="tip-box">' + mHtml + '</div></div>';
+  }
+  var vocabHtml = '';
+  if (vHtml) {
+    vocabHtml = '<div style="margin-bottom:20px"><p class="cheat-label">' + labelVocab + '</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' + vHtml + '</div></div>';
+  }
+
   container.innerHTML = `
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
       <span class="badge" style="background:var(--pri-light);color:var(--pri)">${esc(a.subject)}</span>
       <span class="badge" style="background:var(--acc-light);color:var(--acc-dark)">Grade ${esc(a.grade_level)}</span>
     </div>
     <div style="margin-bottom:20px">
-      <p class="cheat-label">The concept in 30 seconds</p>
+      <p class="cheat-label">${label30sec}</p>
       <p style="font-size:15px;line-height:1.7">${esc(cs.quick_explanation)}</p>
-      ${cs.analogy?'<p style="font-size:14px;color:var(--text2);line-height:1.6;margin-top:8px;font-style:italic">'+esc(cs.analogy)+'</p>':''}
+      ${analogyHtml}
     </div>
-    ${cs.worked_example?`<div style="margin-bottom:20px"><p class="cheat-label">Worked example</p><div class="example-box"><p style="font-weight:700;margin-bottom:14px;font-size:17px;text-align:center">${esc(cs.worked_example.problem)}</p>${exHtml}</div></div>`:''}
-    ${mHtml?`<div style="margin-bottom:20px"><p class="cheat-label">Watch out for these mistakes</p><div class="tip-box">${mHtml}</div></div>`:''}
-    ${vHtml?`<div style="margin-bottom:20px"><p class="cheat-label">Vocabulary</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${vHtml}</div></div>`:''}`;
+    ${workedHtml}
+    ${mistakesHtml}
+    ${vocabHtml}`;
 }
 
 // ==========================================
