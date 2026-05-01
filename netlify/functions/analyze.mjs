@@ -2,6 +2,8 @@ const LANG_NAMES = { en:"English", es:"Spanish", zh:"Chinese (Simplified)", vi:"
 
 const SYSTEM_PROMPT = "You are the AI engine for HintStep. You help PARENTS guide children through homework using questions, not answers. Analyze the photo and respond with valid JSON containing: success, analysis (subject, topic, grade_level, problem_count, assignment_type, concepts, estimated_time_minutes), coaching (encouragement, steps with step_number/title/description/guiding_questions/parent_tip/if_stuck, wrap_up with celebration_prompt/preview_prompt), and cheat_sheet (quick_explanation, analogy, worked_example, common_mistakes, vocabulary). Generate 3-5 coaching steps. NEVER include answers. Use the Socratic method. If not homework or too blurry respond with {success: false, error: description}.";
 
+const STATE_STANDARDS = { AL:"Alabama Course of Study", AK:"Alaska Content Standards", AZ:"Arizona Academic Standards", AR:"Arkansas Academic Standards", CA:"California Common Core State Standards", CO:"Colorado Academic Standards", CT:"Connecticut Core Standards", DE:"Delaware Content Standards", FL:"Florida B.E.S.T. Standards", GA:"Georgia Standards of Excellence", HI:"Hawaii Common Core Standards", ID:"Idaho Content Standards", IL:"Illinois Learning Standards", IN:"Indiana Academic Standards", IA:"Iowa Core Standards", KS:"Kansas College and Career Ready Standards", KY:"Kentucky Academic Standards", LA:"Louisiana Student Standards", ME:"Maine Learning Results", MD:"Maryland College and Career-Ready Standards", MA:"Massachusetts Curriculum Frameworks", MI:"Michigan Academic Standards", MN:"Minnesota Academic Standards", MS:"Mississippi College and Career Readiness Standards", MO:"Missouri Learning Standards", MT:"Montana Content Standards", NE:"Nebraska College and Career Ready Standards", NV:"Nevada Academic Content Standards", NH:"New Hampshire College and Career Ready Standards", NJ:"New Jersey Student Learning Standards", NM:"New Mexico Common Core State Standards", NY:"New York Next Generation Learning Standards", NC:"North Carolina Standard Course of Study", ND:"North Dakota Content Standards", OH:"Ohio Learning Standards", OK:"Oklahoma Academic Standards", OR:"Oregon Content Standards", PA:"Pennsylvania Core Standards", RI:"Rhode Island Common Core State Standards", SC:"South Carolina College and Career Ready Standards", SD:"South Dakota Content Standards", TN:"Tennessee Academic Standards", TX:"Texas Essential Knowledge and Skills (TEKS)", UT:"Utah Core Standards", VT:"Vermont Common Core State Standards", VA:"Virginia Standards of Learning (SOL)", WA:"Washington State Learning Standards", WV:"West Virginia College and Career Readiness Standards", WI:"Wisconsin Academic Standards", WY:"Wyoming Content and Performance Standards", DC:"DC Common Core State Standards" };
+
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") {
     return { statusCode: 204, headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type" } };
@@ -16,6 +18,8 @@ export async function handler(event) {
     var body = JSON.parse(event.body);
     var lang = body.language || "en";
     var langName = LANG_NAMES[lang] || "English";
+    var userState = body.state || "";
+    var stateStandards = STATE_STANDARDS[userState] || "";
     if (body.image) {
       // good, continue
     } else {
@@ -30,7 +34,7 @@ export async function handler(event) {
     var apiResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 4000, system: SYSTEM_PROMPT + " Respond in " + langName + ". All text in your JSON response must be in " + langName + " except for JSON keys which stay in English.", messages: [{ role: "user", content: [{ type: "image", source: { type: "base64", media_type: body.media_type || "image/jpeg", data: body.image } }, { type: "text", text: "Analyze this homework and create a coaching guide and cheat sheet. Guiding questions only, never answers." }] }] })
+      body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 4000, system: SYSTEM_PROMPT + (stateStandards ? " This student is in " + userState + ". Align your coaching with " + stateStandards + ". Reference the specific methods and vocabulary used in these standards. Mention the standard alignment in the cheat_sheet quick_explanation." : "") + " Respond in " + langName + ". All text in your JSON response must be in " + langName + " except for JSON keys which stay in English.", messages: [{ role: "user", content: [{ type: "image", source: { type: "base64", media_type: body.media_type || "image/jpeg", data: body.image } }, { type: "text", text: "Analyze this homework and create a coaching guide and cheat sheet. Guiding questions only, never answers." }] }] })
     });
     var apiData = await apiResponse.json();
     if (apiResponse.ok) {
