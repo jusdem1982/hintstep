@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HintStep Dashboard</title>
+<style>
+:root { --pri:#0F6E56; --bg:#F7F6F3; --surface:#FFFFFF; --text:#1A1A1A; --text2:#6B6B6B; --border:#E5E5E3; --green:#22C55E; --red:#EF4444; --blue:#3B82F6; --amber:#F59E0B; }
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+.login-screen { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; padding:24px; }
+.login-box { background:var(--surface); border-radius:16px; padding:32px; max-width:360px; width:100%; border:1px solid var(--border); }
+.login-box h2 { font-size:20px; margin-bottom:16px; text-align:center; }
+.login-box input { width:100%; padding:12px 16px; border-radius:10px; border:1px solid var(--border); font-size:16px; margin-bottom:12px; outline:none; }
+.login-box input:focus { border-color:var(--pri); }
+.login-box button { width:100%; padding:12px; border-radius:10px; border:none; background:var(--pri); color:#fff; font-size:16px; font-weight:600; cursor:pointer; }
+.dashboard { display:none; max-width:900px; margin:0 auto; padding:24px; }
+.dash-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; }
+.dash-header h1 { font-size:24px; font-weight:700; }
+.refresh-btn { padding:8px 16px; border-radius:8px; border:1px solid var(--border); background:var(--surface); font-size:14px; cursor:pointer; color:var(--text2); }
+.refresh-btn:hover { background:var(--bg); }
+.stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:24px; }
+.stat-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px; }
+.stat-label { font-size:12px; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px; }
+.stat-value { font-size:32px; font-weight:800; }
+.stat-sub { font-size:12px; color:var(--text2); margin-top:4px; }
+.stat-green { color:var(--green); }
+.stat-blue { color:var(--blue); }
+.stat-amber { color:var(--amber); }
+.stat-pri { color:var(--pri); }
+.section { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px; margin-bottom:16px; }
+.section h3 { font-size:16px; font-weight:600; margin-bottom:16px; }
+.activity-item { display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--border); }
+.activity-item:last-child { border-bottom:none; }
+.activity-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.activity-text { font-size:14px; flex:1; }
+.activity-time { font-size:12px; color:var(--text2); }
+.links { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.link-card { display:block; padding:14px 16px; background:var(--bg); border-radius:10px; text-decoration:none; color:var(--text); font-size:14px; font-weight:500; text-align:center; transition:background .15s; }
+.link-card:hover { background:var(--border); }
+.updated { font-size:12px; color:var(--text2); text-align:center; margin-top:16px; }
+.loading { text-align:center; padding:40px; color:var(--text2); }
+.error-msg { color:var(--red); font-size:13px; text-align:center; margin-top:8px; display:none; }
+</style>
+</head>
+<body>
+
+<div class="login-screen" id="login-screen">
+  <div class="login-box">
+    <h2>HintStep Dashboard</h2>
+    <input type="password" id="dash-key" placeholder="Dashboard password" autofocus>
+    <button onclick="login()">View Dashboard</button>
+    <p class="error-msg" id="login-error">Invalid password</p>
+  </div>
+</div>
+
+<div class="dashboard" id="dashboard">
+  <div class="dash-header">
+    <h1>HintStep Dashboard</h1>
+    <button class="refresh-btn" onclick="loadStats()">Refresh</button>
+  </div>
+
+  <div class="stats-grid" id="stats-grid">
+    <div class="stat-card">
+      <p class="stat-label">Monthly Revenue</p>
+      <p class="stat-value stat-green" id="s-mrr">--</p>
+      <p class="stat-sub">MRR</p>
+    </div>
+    <div class="stat-card">
+      <p class="stat-label">Subscribers</p>
+      <p class="stat-value stat-pri" id="s-subs">--</p>
+      <p class="stat-sub">Active</p>
+    </div>
+    <div class="stat-card">
+      <p class="stat-label">Total Scans</p>
+      <p class="stat-value stat-blue" id="s-scans">--</p>
+      <p class="stat-sub">All time</p>
+    </div>
+    <div class="stat-card">
+      <p class="stat-label">Today's Scans</p>
+      <p class="stat-value stat-amber" id="s-today">--</p>
+      <p class="stat-sub">Today</p>
+    </div>
+    <div class="stat-card">
+      <p class="stat-label">Stripe Customers</p>
+      <p class="stat-value" id="s-customers">--</p>
+      <p class="stat-sub">Total signups</p>
+    </div>
+    <div class="stat-card">
+      <p class="stat-label">30-Day Revenue</p>
+      <p class="stat-value stat-green" id="s-rev30">--</p>
+      <p class="stat-sub" id="s-charges30">-- charges</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>Recent Activity</h3>
+    <div id="activity-feed"><p class="loading">Loading...</p></div>
+  </div>
+
+  <div class="section">
+    <h3>Quick Links</h3>
+    <div class="links">
+      <a class="link-card" href="https://dashboard.stripe.com" target="_blank">Stripe Dashboard</a>
+      <a class="link-card" href="https://app.netlify.com" target="_blank">Netlify Dashboard</a>
+      <a class="link-card" href="https://supabase.com/dashboard" target="_blank">Supabase Dashboard</a>
+      <a class="link-card" href="https://console.anthropic.com" target="_blank">Anthropic Console</a>
+    </div>
+  </div>
+
+  <p class="updated" id="updated-at"></p>
+</div>
+
+<script>
+var dashKey = '';
+
+function login() {
+  dashKey = document.getElementById('dash-key').value;
+  if (!dashKey) return;
+  document.getElementById('login-error').style.display = 'none';
+  loadStats();
+}
+
+document.getElementById('dash-key').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') login();
+});
+
+async function loadStats() {
+  try {
+    var response = await fetch('/api/stats', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: dashKey })
+    });
+    var data = await response.json();
+
+    if (data.error === 'Unauthorized') {
+      document.getElementById('login-error').style.display = 'block';
+      return;
+    }
+
+    // Show dashboard
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+
+    // Update stats
+    var s = data.stripe;
+    var db = data.supabase;
+
+    document.getElementById('s-mrr').textContent = '$' + (s.mrr || 0).toFixed(2);
+    document.getElementById('s-subs').textContent = s.active_subscriptions || 0;
+    document.getElementById('s-scans').textContent = db.total_sessions || 0;
+    document.getElementById('s-today').textContent = db.today_sessions || 0;
+    document.getElementById('s-customers').textContent = s.customers || 0;
+    document.getElementById('s-rev30').textContent = '$' + (s.revenue_30d || 0).toFixed(2);
+    document.getElementById('s-charges30').textContent = (s.charges_30d || 0) + ' charges';
+
+    // Activity feed
+    var feed = document.getElementById('activity-feed');
+    if (data.recent_events && data.recent_events.length > 0) {
+      var html = '';
+      data.recent_events.forEach(function(ev) {
+        var date = new Date(ev.created * 1000);
+        var timeStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+        var label = 'New subscriber';
+        html += '<div class="activity-item"><div class="activity-dot" style="background:var(--green)"></div><p class="activity-text">' + label + '</p><p class="activity-time">' + timeStr + '</p></div>';
+      });
+      feed.innerHTML = html;
+    } else {
+      feed.innerHTML = '<p style="color:var(--text2);font-size:14px;padding:12px 0">No subscription activity yet. Once people subscribe, events will show here.</p>';
+    }
+
+    // Updated timestamp
+    document.getElementById('updated-at').textContent = 'Last updated: ' + new Date(data.updated_at).toLocaleString();
+
+  } catch(e) {
+    document.getElementById('login-error').textContent = 'Connection error. Try again.';
+    document.getElementById('login-error').style.display = 'block';
+  }
+}
+</script>
+</body>
+</html>
