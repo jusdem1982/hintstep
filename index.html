@@ -3073,11 +3073,19 @@ function renderCheatSheet(data) {
   const container = document.getElementById('cheatsheet-body');
 
   let exHtml = '';
-  if (cs.worked_example && cs.worked_example.steps) {
-    cs.worked_example.steps.forEach((s,i) => {
-      exHtml += `<div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start"><div class="mini-num">${i+1}</div><p style="font-size:14px;line-height:1.6">${esc(s)}</p></div>`;
+  var workedExamples = cs.worked_examples || (cs.worked_example ? [cs.worked_example] : []);
+  workedExamples.forEach(function(ex, exIdx) {
+    exHtml += '<div class="example-box" style="margin-bottom:12px"><p style="font-weight:700;margin-bottom:14px;font-size:17px;text-align:center">' + esc(ex.problem) + '</p>';
+    var steps = ex.step_by_step || ex.steps || [];
+    steps.forEach(function(s, i) {
+      if (typeof s === 'string') {
+        exHtml += '<div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start"><div class="mini-num">' + (i+1) + '</div><p style="font-size:14px;line-height:1.6">' + esc(s) + '</p></div>';
+      } else {
+        exHtml += '<div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start"><div class="mini-num">' + (s.step_number || (i+1)) + '</div><div><p style="font-size:14px;line-height:1.6;font-weight:600">' + esc(s.what_to_do) + '</p>' + (s.result ? '<p style="font-size:14px;line-height:1.6;color:var(--pri);margin-top:2px">' + esc(s.result) + '</p>' : '') + '</div></div>';
+      }
     });
-  }
+    exHtml += '</div>';
+  });
   let mHtml = '';
   if (cs.common_mistakes) {
     cs.common_mistakes.forEach(m => {
@@ -3101,8 +3109,8 @@ function renderCheatSheet(data) {
     analogyHtml = '<p style="font-size:14px;color:var(--text2);line-height:1.6;margin-top:8px;font-style:italic">' + esc(cs.analogy) + '</p>';
   }
   var workedHtml = '';
-  if (cs.worked_example) {
-    workedHtml = '<div style="margin-bottom:20px"><p class="cheat-label">' + labelWorked + '</p><div class="example-box"><p style="font-weight:700;margin-bottom:14px;font-size:17px;text-align:center">' + esc(cs.worked_example.problem) + '</p>' + exHtml + '</div></div>';
+  if (exHtml) {
+    workedHtml = '<div style="margin-bottom:20px"><p class="cheat-label">' + labelWorked + '</p>' + exHtml + '</div>';
   }
   var mistakesHtml = '';
   if (mHtml) {
